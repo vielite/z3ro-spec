@@ -1,0 +1,42 @@
+[project]
+name = "z3ro-spec"
+version = "0.1.0"
+description = "Vulnerability-agnostic formal-spec assistant for smart-contract whitehat research"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "httpx>=0.27.0",
+    "pydantic>=2.7.0",
+    "rich>=13.7.0",
+    "typer>=0.12.0",
+    "z3-solver>=4.12.0",
+]
+
+[project.scripts]
+z3ro-spec = "specscan.cli:app"
+specscan = "specscan.cli:app"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0.0",
+    "ruff>=0.5.0",
+    "ty>=0.0.1a8",
+]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]

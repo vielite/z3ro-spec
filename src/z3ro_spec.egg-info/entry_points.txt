@@ -1,0 +1,3 @@
+[console_scripts]
+specscan = specscan.cli:app
+z3ro-spec = specscan.cli:app

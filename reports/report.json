@@ -1,0 +1,853 @@
+{
+  "prioritization_summary": {
+    "total_input_candidates": 25,
+    "excluded_due_to_missing_invalid_zero_or_low_value": 11,
+    "remaining_after_value_filter": 14,
+    "excluded_by_deterministic_filters": 0,
+    "excluded_by_llm_triage": 0,
+    "not_evaluated_after_top_candidates_selected": 12,
+    "selected_for_formal_verification": 2,
+    "top_candidates_requested": 2,
+    "min_value": 0.0
+  },
+  "excluded_candidates": [
+    {
+      "finding": {
+        "contract": "0x96dd07b6c99b22f3f0cb1836aff8530a98bde9e3",
+        "contract_name": "StrategyProxy",
+        "sol_function": "function deposit(address _gauge, address _token) external {\r\n        require(strategies[_gauge] == msg.sender, \"!strategy\");\r\n        uint _balance = IERC20(_token).balanceOf(address(this));\r\n        IERC20(_token).safeTransfer(address(proxy), _balance);\r\n        _balance = IERC20(_token).balanceOf(address(proxy));\r\n\r\n        proxy.execute(_token, 0, abi.encodeWithSignature(\"approve(address,uint256)\", _gauge, 0));\r\n        proxy.execute(_token, 0, abi.encodeWithSignature(\"approve(address,uint256)\", _gauge, _balance));\r\n        (bool success, ) = proxy.execute(_gauge, 0, abi.encodeWithSignature(\"deposit(uint256)\", _balance));\r\n        if (!success) assert(false);\r\n    }",
+        "sol_function_source_lines": [
+          499,
+          509
+        ],
+        "value": 0.0,
+        "normalized_value": 0.0,
+        "value_status": "zero_or_negative",
+        "extra": {}
+      },
+      "normalized_value": 0.0,
+      "deterministic_keep": false,
+      "deterministic_reason": "not_run_value_excluded",
+      "triage_keep": null,
+      "triage_confidence": null,
+      "triage_reason": null,
+      "selected_for_verification": false,
+      "exclusion_reason": "excluded_zero_or_negative_value",
+      "rank": null
+    },
+    {
+      "finding": {
+        "contract": "0x358cfacf00d0b4634849821bb3d1965b472c776a",
+        "contract_name": "LayerZeroTeller",
+        "sol_function": "function deposit(ERC20 depositAsset, uint256 depositAmount, uint256 minimumMint)\r\n        external\r\n        payable\r\n        requiresAuth\r\n        nonReentrant\r\n        returns (uint256 shares)\r\n    {\r\n        Asset memory asset = _beforeDeposit(depositAsset);\r\n\r\n        address from;\r\n        if (address(depositAsset) == NATIVE) {\r\n            if (msg.value == 0) revert TellerWithMultiAssetSupport__ZeroAssets();\r\n            nativeWrapper.deposit{value: msg.value}();\r\n            // Set depositAmount to msg.value.\r\n            depositAmount = msg.value;\r\n            nativeWrapper.safeApprove(address(vault), depositAmount);\r\n            // Update depositAsset to nativeWrapper.\r\n            depositAsset = nativeWrapper;\r\n            // Set from to this address since user transferred value.\r\n            from = address(this);\r\n        } else {\r\n            if (msg.value > 0) revert TellerWithMultiAssetSupport__DualDeposit();\r\n            from = msg.sender;\r\n        }\r\n\r\n        shares = _erc20Deposit(depositAsset, depositAmount, minimumMint, from, msg.sender, asset);\r\n        _afterPublicDeposit(msg.sender, depositAsset, depositAmount, shares, shareLockPeriod);\r\n    }",
+        "sol_function_source_lines": [
+          4643,
+          4670
+        ],
+        "value": 0.0,
+        "normalized_value": 0.0,
+        "value_status": "zero_or_negative",
+        "extra": {}
+      },
+      "normalized_value": 0.0,
+      "deterministic_keep": false,
+      "deterministic_reason": "not_run_value_excluded",
+      "triage_keep": null,
+      "triage_confidence": null,
+      "triage_reason": null,
+      "selected_for_verification": false,
+      "exclusion_reason": "excluded_zero_or_negative_value",
+      "rank": null
+    },
+    {
+      "finding": {
+        "contract": "0x359c1efd3fc7e3a9b7a043c185fd5d39dec1fc81",
+        "contract_name": "StakingProxyERC20",
+        "sol_function": "function deposit(uint256 _amount) external onlyOwner nonReentrant{\n        if(_amount > 0){\n            //pull tokens from user\n            address _stakingToken = stakingToken;\n            IERC20(_stakingToken).safeTransferFrom(msg.sender, address(this), _amount);\n\n            //stake (use balanceof in case of change during transfer)\n            IFxnGauge(gaugeAddress).deposit(IERC20(_stakingToken).balanceOf(address(this)));\n        }\n        \n        //checkpoint rewards\n        _checkpointRewards();\n    }",
+        "sol_function_source_lines": [
+          43,
+          55
+        ],
+        "value": 0.0,
+        "normalized_value": 0.0,
+        "value_status": "zero_or_negative",
+        "extra": {}
+      },
+      "normalized_value": 0.0,
+      "deterministic_keep": false,
+      "deterministic_reason": "not_run_value_excluded",
+      "triage_keep": null,
+      "triage_confidence": null,
+      "triage_reason": null,
+      "selected_for_verification": false,
+      "exclusion_reason": "excluded_zero_or_negative_value",
+      "rank": null
+    },
+    {
+      "finding": {
+        "contract": "0x359c1efd3fc7e3a9b7a043c185fd5d39dec1fc81",
+        "contract_name": "StakingProxyERC20",
+        "sol_function": "function deposit(uint256 _amount, bool _manage) external onlyOwner nonReentrant{\n        if(_amount > 0){\n            //pull tokens from user\n            address _stakingToken = stakingToken;\n            IERC20(_stakingToken).safeTransferFrom(msg.sender, address(this), _amount);\n\n            //stake (use balanceof in case of change during transfer)\n            IFxnGauge(gaugeAddress).deposit(IERC20(_stakingToken).balanceOf(address(this)), address(this), _manage);\n        }\n        \n        //checkpoint rewards\n        _checkpointRewards();\n    }",
+        "sol_function_source_lines": [
+          58,
+          70
+        ],
+        "value": 0.0,
+        "normalized_value": 0.0,
+        "value_status": "zero_or_negative",
+        "extra": {}
+      },
+      "normalized_value": 0.0,
+      "deterministic_keep": false,
+      "deterministic_reason": "not_run_value_excluded",
+      "triage_keep": null,
+      "triage_confidence": null,
+      "triage_reason": null,
+      "selected_for_verification": false,
+      "exclusion_reason": "excluded_zero_or_negative_value",
+      "rank": null
+    },
+    {
+      "finding": {
+        "contract": "0x96fe7b5762bd4405149a9a313473e68a8e870f6c",
+        "contract_name": "PrizeVault",
+        "sol_function": "function deposit(uint256 _assets, address _receiver) external returns (uint256) {\n        uint256 _shares = previewDeposit(_assets);\n        _depositAndMint(msg.sender, _receiver, _assets, _shares);\n        return _shares;\n    }",
+        "sol_function_source_lines": [
+          481,
+          485
+        ],
+        "value": 0.0,
+        "normalized_value": 0.0,
+        "value_status": "zero_or_negative",
+        "extra": {}
+      },
+      "normalized_value": 0.0,
+      "deterministic_keep": false,
+      "deterministic_reason": "not_run_value_excluded",
+      "triage_keep": null,
+      "triage_confidence": null,
+      "triage_reason": null,
+      "selected_for_verification": false,
+      "exclusion_reason": "excluded_zero_or_negative_value",
+      "rank": null
+    },
+    {
+      "finding": {
+        "contract": "0x357ada6e0da1bb40668bddd3e3af64f472cbd9ff",
+        "contract_name": "StakingPool",
+        "sol_function": "function deposit(uint256 _originAmount) public {\r\n        UserInfo storage user = userInfo[msg.sender];\r\n\r\n        massUpdatePools();\r\n\r\n        // Transfer pending tokens\r\n        // to user\r\n        updateAndPayOutPending(msg.sender);\r\n\r\n        pendingDeposit = computeDepositAmount(\r\n            msg.sender,\r\n            address(this),\r\n            _originAmount\r\n        );\r\n        uint256 _actualDepositReceive = pendingDeposit;\r\n        //Transfer in the amounts from user\r\n        // save gas\r\n        if (_actualDepositReceive > 0) {\r\n            nerd.transferFrom(\r\n                address(msg.sender),\r\n                address(this),\r\n                _originAmount\r\n            );\r\n            pendingDeposit = 0;\r\n            updateDepositTime(msg.sender, _actualDepositReceive);\r\n            user.amount = user.amount.add(_actualDepositReceive);\r\n        }\r\n        //massUpdatePools();\r\n        user.rewardDebt = user.amount.mul(poolInfo.accNerdPerShare).div(1e18);\r\n        poolInfo.totalDeposit = poolInfo.totalDeposit.add(\r\n            _actualDepositReceive\r\n        );\r\n        emit Deposit(msg.sender, _actualDepositReceive);\r\n    }",
+        "sol_function_source_lines": [
+          1356,
+          1389
+        ],
+        "value": 0.0,
+        "normalized_value": 0.0,
+        "value_status": "zero_or_negative",
+        "extra": {}
+      },
+      "normalized_value": 0.0,
+      "deterministic_keep": false,
+      "deterministic_reason": "not_run_value_excluded",
+      "triage_keep": null,
+      "triage_confidence": null,
+      "triage_reason": null,
+      "selected_for_verification": false,
+      "exclusion_reason": "excluded_zero_or_negative_value",
+      "rank": null
+    },
+    {
+      "finding": {
+        "contract": "0x96c2c05c7fee9ad6953467b6fc4ce4beb8c9b08c",
+        "contract_name": "MetamorphoConnector",
+        "sol_function": "function deposit(IERC20 asset, uint256 amount) external {\n        asset.forceApprove(address(metamorpho), amount);\n        metamorpho.deposit(amount, address(this));\n    }",
+        "sol_function_source_lines": [
+          60,
+          63
+        ],
+        "value": 0.0,
+        "normalized_value": 0.0,
+        "value_status": "zero_or_negative",
+        "extra": {}
+      },
+      "normalized_value": 0.0,
+      "deterministic_keep": false,
+      "deterministic_reason": "not_run_value_excluded",
+      "triage_keep": null,
+      "triage_confidence": null,
+      "triage_reason": null,
+      "selected_for_verification": false,
+      "exclusion_reason": "excluded_zero_or_negative_value",
+      "rank": null
+    },
+    {
+      "finding": {
+        "contract": "0x96becced4ed2cbefa679306bf9353093b7276a16",
+        "contract_name": "EigenLayerRETHVault",
+        "sol_function": "function deposit(\n        uint256 assets,\n        address receiver\n    )\n        external\n        payable\n        virtual\n        override\n        nonReentrant\n        onlyLM\n        returns (uint256 rETH)\n    {\n        require(msg.value > 0 || assets > 0, \"deposit: Invalid deposit amount\");\n        if (totalSupply() > 0 && _shares() == 0) {\n            // an undelegation is underway\n            revert(\"deposit: undelegation in progress\");\n        }\n\n        // Send native eth and rETH to the rocket pool vault\n        rETH = _deposit(assets, receiver);\n\n        _depositIntoStrategy(rETH);\n        emit Deposit(msg.sender, receiver, rETH);\n    }",
+        "sol_function_source_lines": [
+          78,
+          101
+        ],
+        "value": 0.0,
+        "normalized_value": 0.0,
+        "value_status": "zero_or_negative",
+        "extra": {}
+      },
+      "normalized_value": 0.0,
+      "deterministic_keep": false,
+      "deterministic_reason": "not_run_value_excluded",
+      "triage_keep": null,
+      "triage_confidence": null,
+      "triage_reason": null,
+      "selected_for_verification": false,
+      "exclusion_reason": "excluded_zero_or_negative_value",
+      "rank": null
+    },
+    {
+      "finding": {
+        "contract": "0x973c2f122dbfa2867e6f7a05d329414bff43eaea",
+        "contract_name": "ChefRewardHook",
+        "sol_function": "function deposit() external{\r\n        uint256 balance = cheftoken.balanceOf(msg.sender);\r\n        require(balance != 0, \"Balance must exceed 0\");\r\n        cheftoken.safeTransferFrom(msg.sender, address(this), balance);\r\n        cheftoken.approve(chef, balance);\r\n        IChef(chef).deposit(pid, balance);\r\n    }",
+        "sol_function_source_lines": [
+          33,
+          39
+        ],
+        "value": 0.0,
+        "normalized_value": 0.0,
+        "value_status": "zero_or_negative",
+        "extra": {}
+      },
+      "normalized_value": 0.0,
+      "deterministic_keep": false,
+      "deterministic_reason": "not_run_value_excluded",
+      "triage_keep": null,
+      "triage_confidence": null,
+      "triage_reason": null,
+      "selected_for_verification": false,
+      "exclusion_reason": "excluded_zero_or_negative_value",
+      "rank": null
+    },
+    {
+      "finding": {
+        "contract": "0x353e11ab2da88bfc57fd42c2871301c1f123d4db",
+        "contract_name": "ConcentratorStakeDAOLocker",
+        "sol_function": "function deposit(address _gauge, address _token) external override onlyOperator(_gauge) returns (uint256 _amount) {\n    _amount = IERC20Upgradeable(_token).balanceOf(address(this));\n    if (_amount > 0) {\n      IERC20Upgradeable(_token).safeApprove(_gauge, 0);\n      IERC20Upgradeable(_token).safeApprove(_gauge, _amount);\n      // deposit without claiming rewards\n      ICurveGauge(_gauge).deposit(_amount);\n    }\n  }",
+        "sol_function_source_lines": [
+          117,
+          125
+        ],
+        "value": 0.0,
+        "normalized_value": 0.0,
+        "value_status": "zero_or_negative",
+        "extra": {}
+      },
+      "normalized_value": 0.0,
+      "deterministic_keep": false,
+      "deterministic_reason": "not_run_value_excluded",
+      "triage_keep": null,
+      "triage_confidence": null,
+      "triage_reason": null,
+      "selected_for_verification": false,
+      "exclusion_reason": "excluded_zero_or_negative_value",
+      "rank": null
+    },
+    {
+      "finding": {
+        "contract": "0x975304c676eb3dc86cd336138328e107a95eaa50",
+        "contract_name": "TokenizedStrategy",
+        "sol_function": "function deposit(\n        uint256 assets,\n        address receiver\n    ) external nonReentrant returns (uint256 shares) {\n        // Get the storage slot for all following calls.\n        StrategyData storage S = _strategyStorage();\n        // Checking max deposit will also check if shutdown.\n        require(\n            assets <= _maxDeposit(S, receiver),\n            \"ERC4626: deposit more than max\"\n        );\n        // Check for rounding error.\n        require(\n            (shares = _convertToShares(S, assets, Math.Rounding.Down)) != 0,\n            \"ZERO_SHARES\"\n        );\n\n        _deposit(S, receiver, assets, shares);\n    }",
+        "sol_function_source_lines": [
+          494,
+          512
+        ],
+        "value": 0.0,
+        "normalized_value": 0.0,
+        "value_status": "zero_or_negative",
+        "extra": {}
+      },
+      "normalized_value": 0.0,
+      "deterministic_keep": false,
+      "deterministic_reason": "not_run_value_excluded",
+      "triage_keep": null,
+      "triage_confidence": null,
+      "triage_reason": null,
+      "selected_for_verification": false,
+      "exclusion_reason": "excluded_zero_or_negative_value",
+      "rank": null
+    },
+    {
+      "finding": {
+        "contract": "0xc39a5a616f0ad1ff45077fa2de3f79ab8eb8b8b9",
+        "contract_name": "MaplePool",
+        "sol_function": "function deposit(uint256 assets_, address receiver_) external override nonReentrant checkCall(\"P:deposit\") returns (uint256 shares_) {\r\n        _mint(shares_ = previewDeposit(assets_), assets_, receiver_, msg.sender);\r\n    }",
+        "sol_function_source_lines": [
+          1002,
+          1004
+        ],
+        "value": 535624.1483062173,
+        "normalized_value": 535624.1483062173,
+        "value_status": "valid",
+        "extra": {}
+      },
+      "normalized_value": 535624.1483062173,
+      "deterministic_keep": false,
+      "deterministic_reason": "not_run_top_candidates_already_selected",
+      "triage_keep": null,
+      "triage_confidence": null,
+      "triage_reason": null,
+      "selected_for_verification": false,
+      "exclusion_reason": "not_evaluated_after_top_candidates_selected",
+      "rank": null
+    },
+    {
+      "finding": {
+        "contract": "0x35a398425d9f1029021a92bc3d2557d42c8588d7",
+        "contract_name": "PirexCvx",
+        "sol_function": "function deposit(\n        uint256 assets,\n        address receiver,\n        bool shouldCompound,\n        address developer\n    ) external whenNotPaused nonReentrant {\n        if (assets == 0) revert ZeroAmount();\n        if (receiver == address(0)) revert ZeroAddress();\n\n        emit Deposit(assets, receiver, shouldCompound, developer);\n\n        // Track amount of CVX waiting to be locked before `assets` is modified\n        pendingLocks += assets;\n\n        // Calculate the dev incentive, which will come out of the minted pxCVX\n        uint256 developerIncentive = developer != address(0) &&\n            developers[developer]\n            ? (assets * fees[Fees.Developers]) / FEE_DENOMINATOR\n            : 0;\n\n        // Take snapshot if necessary\n        pxCvx.takeEpochSnapshot();\n\n        // Mint pxCVX sans developer incentive - recipient depends on shouldCompound\n        pxCvx.mint(\n            shouldCompound ? address(this) : receiver,\n            assets - developerIncentive\n        );\n\n        // Transfer CVX to self in preparation for lock\n        CVX.safeTransferFrom(msg.sender, address(this), assets);\n\n        if (developerIncentive != 0) {\n            // Mint pxCVX for the developer\n            pxCvx.mint(developer, developerIncentive);\n        }\n\n        if (shouldCompound) {\n            // Update assets to ensure only the appropriate amount is deposited in vault\n            assets -= developerIncentive;\n\n            // Deposit pxCVX into Union vault - user receives shares\n            unionPirex.deposit(assets, receiver);\n        }\n    }",
+        "sol_function_source_lines": [
+          472,
+          516
+        ],
+        "value": 359558.1406365472,
+        "normalized_value": 359558.1406365472,
+        "value_status": "valid",
+        "extra": {}
+      },
+      "normalized_value": 359558.1406365472,
+      "deterministic_keep": false,
+      "deterministic_reason": "not_run_top_candidates_already_selected",
+      "triage_keep": null,
+      "triage_confidence": null,
+      "triage_reason": null,
+      "selected_for_verification": false,
+      "exclusion_reason": "not_evaluated_after_top_candidates_selected",
+      "rank": null
+    },
+    {
+      "finding": {
+        "contract": "0x970609f90e695e4fe3a6a7ee87e4dae7da8deecc",
+        "contract_name": "StashETH",
+        "sol_function": "function deposit() public payable override returns (uint256) {\n        balanceOf[msg.sender] = balanceOf[msg.sender].add(msg.value);\n        // emit Deposit(msg.sender, msg.value);\n        return msg.value;\n    }",
+        "sol_function_source_lines": [
+          31,
+          35
+        ],
+        "value": 62000.18206260953,
+        "normalized_value": 62000.18206260953,
+        "value_status": "valid",
+        "extra": {}
+      },
+      "normalized_value": 62000.18206260953,
+      "deterministic_keep": false,
+      "deterministic_reason": "not_run_top_candidates_already_selected",
+      "triage_keep": null,
+      "triage_confidence": null,
+      "triage_reason": null,
+      "selected_for_verification": false,
+      "exclusion_reason": "not_evaluated_after_top_candidates_selected",
+      "rank": null
+    },
+    {
+      "finding": {
+        "contract": "0x000000000000040470635eb91b7ce4d132d616ed",
+        "contract_name": "ZAMM",
+        "sol_function": "function deposit(address token, uint256 id, uint256 amount) public payable {\n        require(msg.value == (token == address(0) ? amount : 0), InvalidMsgVal());\n        if (token != address(0)) _safeTransferFrom(token, msg.sender, address(this), id, amount);\n        assembly (\"memory-safe\") {\n            let m := mload(0x40)\n            mstore(0x00, caller())\n            mstore(0x20, token)\n            mstore(0x40, id)\n            let slot := keccak256(0x00, 0x60)\n            tstore(slot, add(tload(slot), amount))\n            mstore(0x40, m)\n        }\n    }",
+        "sol_function_source_lines": [
+          903,
+          915
+        ],
+        "value": 41462.413162619196,
+        "normalized_value": 41462.413162619196,
+        "value_status": "valid",
+        "extra": {}
+      },
+      "normalized_value": 41462.413162619196,
+      "deterministic_keep": false,
+      "deterministic_reason": "not_run_top_candidates_already_selected",
+      "triage_keep": null,
+      "triage_confidence": null,
+      "triage_reason": null,
+      "selected_for_verification": false,
+      "exclusion_reason": "not_evaluated_after_top_candidates_selected",
+      "rank": null
+    },
+    {
+      "finding": {
+        "contract": "0x00000000000008882d72efa6cce4b6a40b24c860",
+        "contract_name": "ZAMM",
+        "sol_function": "function deposit(address token, uint256 id, uint256 amount) public payable {\n        require(msg.value == (token == address(0) ? amount : 0), InvalidMsgVal());\n        if (token != address(0)) _safeTransferFrom(token, id, amount);\n        assembly (\"memory-safe\") {\n            let m := mload(0x40)\n            mstore(0x00, caller())\n            mstore(0x20, token)\n            mstore(0x40, id)\n            let slot := keccak256(0x00, 0x60)\n            tstore(slot, add(tload(slot), amount))\n            mstore(0x40, m)\n        }\n    }",
+        "sol_function_source_lines": [
+          551,
+          563
+        ],
+        "value": 39527.24288488058,
+        "normalized_value": 39527.24288488058,
+        "value_status": "valid",
+        "extra": {}
+      },
+      "normalized_value": 39527.24288488058,
+      "deterministic_keep": false,
+      "deterministic_reason": "not_run_top_candidates_already_selected",
+      "triage_keep": null,
+      "triage_confidence": null,
+      "triage_reason": null,
+      "selected_for_verification": false,
+      "exclusion_reason": "not_evaluated_after_top_candidates_selected",
+      "rank": null
+    },
+    {
+      "finding": {
+        "contract": "0x000000000000fea5f4b241f9e77b4d43b76798a9",
+        "contract_name": "AutoSniper",
+        "sol_function": "function deposit(address sniper) public payable {\n        if (tx.origin == fulfillerAddress) revert FulfillerCannotHaveBalance();\n        unchecked {\n            sniperStates[sniper].ethBalance += uint128(msg.value);\n        }\n\n        emit Deposit(sniper, msg.value);\n    }",
+        "sol_function_source_lines": [
+          151,
+          158
+        ],
+        "value": 14539.454729114117,
+        "normalized_value": 14539.454729114117,
+        "value_status": "valid",
+        "extra": {}
+      },
+      "normalized_value": 14539.454729114117,
+      "deterministic_keep": false,
+      "deterministic_reason": "not_run_top_candidates_already_selected",
+      "triage_keep": null,
+      "triage_confidence": null,
+      "triage_reason": null,
+      "selected_for_verification": false,
+      "exclusion_reason": "not_evaluated_after_top_candidates_selected",
+      "rank": null
+    },
+    {
+      "finding": {
+        "contract": "0x017e71e96f2ae777c679740d2d8dc15ed4231981",
+        "contract_name": "WrappedYFI",
+        "sol_function": "function deposit(uint amount) external {\r\n        _deposit(amount);\r\n    }",
+        "sol_function_source_lines": [
+          157,
+          159
+        ],
+        "value": 6942.928838811601,
+        "normalized_value": 6942.928838811601,
+        "value_status": "valid",
+        "extra": {}
+      },
+      "normalized_value": 6942.928838811601,
+      "deterministic_keep": false,
+      "deterministic_reason": "not_run_top_candidates_already_selected",
+      "triage_keep": null,
+      "triage_confidence": null,
+      "triage_reason": null,
+      "selected_for_verification": false,
+      "exclusion_reason": "not_evaluated_after_top_candidates_selected",
+      "rank": null
+    },
+    {
+      "finding": {
+        "contract": "0x9669890e48f330acd88b78d63e1a6b3482652cd9",
+        "contract_name": "BCNTToken",
+        "sol_function": "function deposit(address _depositor, uint256 _value) public onlyPrivateToken returns(bool){\r\n     require(_value != 0);\r\n     balances[_depositor] = balances[_depositor].add(_value);\r\n     emit Transfer(privateToken, _depositor, _value);\r\n     return true;\r\n   }",
+        "sol_function_source_lines": [
+          303,
+          308
+        ],
+        "value": 1603.5807668642574,
+        "normalized_value": 1603.5807668642574,
+        "value_status": "valid",
+        "extra": {}
+      },
+      "normalized_value": 1603.5807668642574,
+      "deterministic_keep": false,
+      "deterministic_reason": "not_run_top_candidates_already_selected",
+      "triage_keep": null,
+      "triage_confidence": null,
+      "triage_reason": null,
+      "selected_for_verification": false,
+      "exclusion_reason": "not_evaluated_after_top_candidates_selected",
+      "rank": null
+    },
+    {
+      "finding": {
+        "contract": "0x967fb06a8d8428bc9d03436d06694704e9bf7019",
+        "contract_name": "StableAMM",
+        "sol_function": "function deposit(address token, uint amount) external nonReentrant {\r\n        IERC20(token).safeTransferFrom(msg.sender, address(this), amount);\r\n        uint value = Oracle(link).getPriceUSD(token).mul(amount).div(uint256(10)**ERC20Detailed(token).decimals());\r\n        require(value > 0, \"!value\");\r\n        _mint(address(this), value); // Amount of fUSD to mint\r\n\r\n        IERC20(token).safeApprove(unirouter, 0);\r\n        IERC20(token).safeApprove(unirouter, amount);\r\n\r\n        IERC20(address(this)).safeApprove(unirouter, 0);\r\n        IERC20(address(this)).safeApprove(unirouter, value);\r\n        \r\n        (,,uint liquidity) = UniswapRouter(unirouter).addLiquidity(\r\n            token,\r\n            address(this),\r\n            amount,\r\n            value,\r\n            0,\r\n            0,\r\n            address(this),\r\n            now.add(1800)\r\n        );\r\n\r\n        address pair = IUniswapV2Factory(UniswapRouter(unirouter).factory()).getPair(token, address(this));\r\n        require(pair != address(0), \"!pair\");\r\n        if (tokens[pair] == address(0)) {\r\n            tokens[pair] = address(new SupplyToken(\r\n                string(abi.encodePacked(ERC20Detailed(token).symbol(), \" \", ERC20Detailed(pair).name())),\r\n                string(abi.encodePacked(ERC20Detailed(token).symbol(), ERC20Detailed(pair).symbol())),\r\n                ERC20Detailed(pair).decimals()\r\n            ));\r\n        }\r\n        \r\n        SupplyToken(tokens[pair]).mint(msg.sender, liquidity);\r\n        uint dust = IERC20(token).balanceOf(address(this));\r\n        if (dust > 0){\r\n            IERC20(token).safeTransfer(msg.sender, dust);\r\n        }\r\n    }",
+        "sol_function_source_lines": [
+          295,
+          333
+        ],
+        "value": 1408.242322890154,
+        "normalized_value": 1408.242322890154,
+        "value_status": "valid",
+        "extra": {}
+      },
+      "normalized_value": 1408.242322890154,
+      "deterministic_keep": false,
+      "deterministic_reason": "not_run_top_candidates_already_selected",
+      "triage_keep": null,
+      "triage_confidence": null,
+      "triage_reason": null,
+      "selected_for_verification": false,
+      "exclusion_reason": "not_evaluated_after_top_candidates_selected",
+      "rank": null
+    },
+    {
+      "finding": {
+        "contract": "0x96f70e168a4ad963b4b81ea9cce77c56d0d4d92e",
+        "contract_name": "YapStarter",
+        "sol_function": "function deposit(uint256 poolId, uint256 amount) external payable {\r\n        PoolInfo memory poolInfoMem = poolsInfo[poolId];\r\n        if(poolInfoMem.payoutIsEth){\r\n            uint256 amountForFee = msg.value * feePercent / 100;\r\n            if(amountForFee > 0){\r\n                (bool success,) = feeReceiverEth.call{value: amountForFee}(\"\");\r\n                require(success, \"Distribution failed\");\r\n            }\r\n            poolInfoMem.amountForReward += msg.value - amountForFee;\r\n        } else {\r\n            require(msg.value == 0, \"Don't send a value for token deposits\");\r\n            uint256 amountForFee = amount * feePercent / 100;\r\n            SafeERC20.safeTransferFrom(IERC20(poolInfoMem.rewardAddress), msg.sender, address(this), amount);\r\n            if(amountForFee > 0){\r\n                SafeERC20.safeTransfer(IERC20(poolInfoMem.rewardAddress), feeReceiverTokens, amountForFee);\r\n            }\r\n            poolInfoMem.amountForReward += amount - amountForFee;\r\n        }\r\n        poolsInfo[poolId] = poolInfoMem;\r\n    }",
+        "sol_function_source_lines": [
+          1181,
+          1200
+        ],
+        "value": 592.4599326063639,
+        "normalized_value": 592.4599326063639,
+        "value_status": "valid",
+        "extra": {}
+      },
+      "normalized_value": 592.4599326063639,
+      "deterministic_keep": false,
+      "deterministic_reason": "not_run_top_candidates_already_selected",
+      "triage_keep": null,
+      "triage_confidence": null,
+      "triage_reason": null,
+      "selected_for_verification": false,
+      "exclusion_reason": "not_evaluated_after_top_candidates_selected",
+      "rank": null
+    },
+    {
+      "finding": {
+        "contract": "0x974c8fbf4fd795f66b85b73ebc988a51f1a040a9",
+        "contract_name": "MetaMorphoV1_1",
+        "sol_function": "function deposit(uint256 assets, address receiver) public override returns (uint256 shares) {\n        _accrueInterest();\n\n        shares = _convertToSharesWithTotals(assets, totalSupply(), lastTotalAssets, Math.Rounding.Floor);\n\n        _deposit(_msgSender(), receiver, assets, shares);\n    }",
+        "sol_function_source_lines": [
+          564,
+          570
+        ],
+        "value": 0.043271028641488,
+        "normalized_value": 0.043271028641488,
+        "value_status": "valid",
+        "extra": {}
+      },
+      "normalized_value": 0.043271028641488,
+      "deterministic_keep": false,
+      "deterministic_reason": "not_run_top_candidates_already_selected",
+      "triage_keep": null,
+      "triage_confidence": null,
+      "triage_reason": null,
+      "selected_for_verification": false,
+      "exclusion_reason": "not_evaluated_after_top_candidates_selected",
+      "rank": null
+    },
+    {
+      "finding": {
+        "contract": "0x96e61422b6a9ba0e068b6c5add4ffabc6a4aae27",
+        "contract_name": "FixedEUR",
+        "sol_function": "function deposit() external {\r\n        uint _amount = balances[address(this)];\r\n        allowances[address(this)][address(ib)] = _amount;\r\n        liquidity += _amount;\r\n        require(ib.mint(_amount) == 0, \"ib: supply failed\");\r\n    }",
+        "sol_function_source_lines": [
+          76,
+          81
+        ],
+        "value": 0.0005991100537499999,
+        "normalized_value": 0.0005991100537499999,
+        "value_status": "valid",
+        "extra": {}
+      },
+      "normalized_value": 0.0005991100537499999,
+      "deterministic_keep": false,
+      "deterministic_reason": "not_run_top_candidates_already_selected",
+      "triage_keep": null,
+      "triage_confidence": null,
+      "triage_reason": null,
+      "selected_for_verification": false,
+      "exclusion_reason": "not_evaluated_after_top_candidates_selected",
+      "rank": null
+    }
+  ],
+  "selected_candidates": [
+    {
+      "finding": {
+        "contract": "0x80ac24aa929eaf5013f6436cda2a7ba190f5cc0b",
+        "contract_name": "MaplePool",
+        "sol_function": "function deposit(uint256 assets_, address receiver_) external override nonReentrant checkCall(\"P:deposit\") returns (uint256 shares_) {\r\n        _mint(shares_ = previewDeposit(assets_), assets_, receiver_, msg.sender);\r\n    }",
+        "sol_function_source_lines": [
+          1002,
+          1004
+        ],
+        "value": 216026506.55839744,
+        "normalized_value": 216026506.55839744,
+        "value_status": "valid",
+        "extra": {}
+      },
+      "normalized_value": 216026506.55839744,
+      "deterministic_keep": true,
+      "deterministic_reason": "deterministic filters passed",
+      "triage_keep": true,
+      "triage_confidence": "medium",
+      "triage_reason": "The deposit function is directly relevant as it implements the deposit-mint pattern described in the vulnerability. It mints shares calculated by previewDeposit(assets_) without explicitly validating that shares_ > 0 when assets_ > 0. However, confirmation requires the previewDeposit implementation and current vault state (totalAssets, totalSupply) to determine if rounding or edge cases could produce zero shares for nonzero asset deposits.",
+      "selected_for_verification": true,
+      "exclusion_reason": null,
+      "rank": 1
+    },
+    {
+      "finding": {
+        "contract": "0x356b8d89c1e1239cbbb9de4815c39a1474d5ba7d",
+        "contract_name": "MaplePool",
+        "sol_function": "function deposit(uint256 assets_, address receiver_) external override nonReentrant checkCall(\"P:deposit\") returns (uint256 shares_) {\r\n        _mint(shares_ = previewDeposit(assets_), assets_, receiver_, msg.sender);\r\n    }",
+        "sol_function_source_lines": [
+          1002,
+          1004
+        ],
+        "value": 20001061.331183918,
+        "normalized_value": 20001061.331183918,
+        "value_status": "valid",
+        "extra": {}
+      },
+      "normalized_value": 20001061.331183918,
+      "deterministic_keep": true,
+      "deterministic_reason": "deterministic filters passed",
+      "triage_keep": true,
+      "triage_confidence": "medium",
+      "triage_reason": "The deposit function directly uses previewDeposit(assets_) to calculate shares without validating that shares_ > 0. This matches the vulnerability pattern where zero shares could be minted for non-zero asset deposits if previewDeposit rounds down. Need to examine previewDeposit implementation to confirm if it can return zero when assets_ > 0. The absence of a zero-shares check in this function is a red flag.",
+      "selected_for_verification": true,
+      "exclusion_reason": null,
+      "rank": 2
+    }
+  ],
+  "findings": [
+    {
+      "contract_address": "0x80ac24aa929eaf5013f6436cda2a7ba190f5cc0b",
+      "contract_name": "MaplePool",
+      "function_source_lines": [
+        1002,
+        1004
+      ],
+      "value": 216026506.55839744,
+      "vulnerability_description": "Deposit and mint must not mint zero shares for a nonzero asset\n  deposit.",
+      "triage_result": {
+        "original": {
+          "contract": "0x80ac24aa929eaf5013f6436cda2a7ba190f5cc0b",
+          "contract_name": "MaplePool",
+          "sol_function": "function deposit(uint256 assets_, address receiver_) external override nonReentrant checkCall(\"P:deposit\") returns (uint256 shares_) {\r\n        _mint(shares_ = previewDeposit(assets_), assets_, receiver_, msg.sender);\r\n    }",
+          "sol_function_source_lines": [
+            1002,
+            1004
+          ],
+          "value": 216026506.55839744,
+          "normalized_value": 216026506.55839744,
+          "value_status": "valid",
+          "extra": {}
+        },
+        "keep": true,
+        "reason": "The deposit function is directly relevant as it implements the deposit-mint pattern described in the vulnerability. It mints shares calculated by previewDeposit(assets_) without explicitly validating that shares_ > 0 when assets_ > 0. However, confirmation requires the previewDeposit implementation and current vault state (totalAssets, totalSupply) to determine if rounding or edge cases could produce zero shares for nonzero asset deposits.",
+        "confidence": "medium",
+        "fp_categories": [],
+        "vulnerability_relevance": "This is the core deposit function that could exhibit the described vulnerability if previewDeposit returns zero for small asset amounts due to rounding down in the share calculation. The absence of a shares > 0 check makes it relevant, but exploitability depends on the specific previewDeposit logic and vault conditions."
+      },
+      "formal_spec": {
+        "target_contract": "MaplePool",
+        "target_address": "0x80ac24aa929eaf5013f6436cda2a7ba190f5cc0b",
+        "target_function": "deposit",
+        "vulnerability_description": "Deposit and mint must not mint zero shares for a nonzero asset\n  deposit.",
+        "vulnerability_class": "generic_state_transition_safety",
+        "summary": "Fallback spec created because formal-verifier LLM output could not be validated.",
+        "variables": [
+          {
+            "name": "x",
+            "solidity_type": "uint256",
+            "symbolic_type": "uint",
+            "role": "unknown",
+            "description": "placeholder variable; replace with LLM or manual specification"
+          }
+        ],
+        "callee_summaries": [
+          {
+            "name": "deposit",
+            "purpose": "target function requiring manual modeling",
+            "formula": null,
+            "assumptions": []
+          }
+        ],
+        "preconditions": [],
+        "state_transitions": [],
+        "safety_properties": [],
+        "violation_conditions": [],
+        "z3_encoding_notes": [
+          "formal-verifier LLM output could not be validated; manual specification may be required."
+        ],
+        "unsupported_features": [],
+        "missing_context": [
+          "formal verifier LLM output",
+          "formal verifier LLM failed: LLM request failed for model z-ai/glm-5.1 after 3 attempt(s): Server error '502 Bad Gateway' for url 'https://integrate.api.nvidia.com/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/502"
+        ],
+        "confidence": "low"
+      },
+      "verification": {
+        "status": "model_incomplete",
+        "solver_status": "not_run",
+        "counterexample": null,
+        "explanation": "Spec has no violation conditions to assert.",
+        "warnings": [
+          "missing violation_conditions"
+        ]
+      },
+      "limitations": [
+        "Z3 checks only the encoded formal model, not full Solidity or EVM semantics.",
+        "sat means possible_bug, never verified_bug.",
+        "Heuristic source slicing may miss relevant context until Slither integration is added."
+      ],
+      "recommended_manual_review_steps": [
+        "Review missing_context and unsupported_features before trusting solver output.",
+        "Compare each formula against Solidity source and protocol documentation.",
+        "Manually validate any counterexample against real units, rounding, and access control."
+      ]
+    },
+    {
+      "contract_address": "0x356b8d89c1e1239cbbb9de4815c39a1474d5ba7d",
+      "contract_name": "MaplePool",
+      "function_source_lines": [
+        1002,
+        1004
+      ],
+      "value": 20001061.331183918,
+      "vulnerability_description": "Deposit and mint must not mint zero shares for a nonzero asset\n  deposit.",
+      "triage_result": {
+        "original": {
+          "contract": "0x356b8d89c1e1239cbbb9de4815c39a1474d5ba7d",
+          "contract_name": "MaplePool",
+          "sol_function": "function deposit(uint256 assets_, address receiver_) external override nonReentrant checkCall(\"P:deposit\") returns (uint256 shares_) {\r\n        _mint(shares_ = previewDeposit(assets_), assets_, receiver_, msg.sender);\r\n    }",
+          "sol_function_source_lines": [
+            1002,
+            1004
+          ],
+          "value": 20001061.331183918,
+          "normalized_value": 20001061.331183918,
+          "value_status": "valid",
+          "extra": {}
+        },
+        "keep": true,
+        "reason": "The deposit function directly uses previewDeposit(assets_) to calculate shares without validating that shares_ > 0. This matches the vulnerability pattern where zero shares could be minted for non-zero asset deposits if previewDeposit rounds down. Need to examine previewDeposit implementation to confirm if it can return zero when assets_ > 0. The absence of a zero-shares check in this function is a red flag.",
+        "confidence": "medium",
+        "fp_categories": [],
+        "vulnerability_relevance": "This function is the exact implementation site of the described vulnerability. It executes the deposit flow that calculates shares via previewDeposit and passes them directly to _mint. If previewDeposit contains integer division that rounds down to zero for small asset amounts, this function would mint zero shares, causing loss of deposited assets."
+      },
+      "formal_spec": {
+        "target_contract": "MaplePool",
+        "target_address": "0x356b8d89c1e1239cbbb9de4815c39a1474d5ba7d",
+        "target_function": "deposit",
+        "vulnerability_description": "Deposit and mint must not mint zero shares for a nonzero asset deposit.",
+        "vulnerability_class": "ERC4626_zero_share_mint",
+        "summary": "The deposit function calculates shares using previewDeposit(assets_) and passes the result directly to _mint without checking that shares > 0. If previewDeposit rounds down to 0 for a small nonzero asset deposit, the user loses their deposited assets while receiving zero shares.",
+        "variables": [
+          {
+            "name": "assets_",
+            "solidity_type": "uint256",
+            "symbolic_type": "uint",
+            "role": "argument",
+            "description": "Amount of assets to deposit"
+          },
+          {
+            "name": "shares_",
+            "solidity_type": "uint256",
+            "symbolic_type": "uint",
+            "role": "derived",
+            "description": "Amount of shares minted, calculated by previewDeposit(assets_)"
+          },
+          {
+            "name": "totalSupply_before",
+            "solidity_type": "uint256",
+            "symbolic_type": "uint",
+            "role": "state",
+            "description": "Total supply of shares before the deposit"
+          },
+          {
+            "name": "totalAssets_before",
+            "solidity_type": "uint256",
+            "symbolic_type": "uint",
+            "role": "state",
+            "description": "Total assets managed by the vault before the deposit"
+          },
+          {
+            "name": "BOOTSTRAP_MINT",
+            "solidity_type": "uint256",
+            "symbolic_type": "uint",
+            "role": "constant",
+            "description": "Bootstrap mint amount used to prevent division by zero in share calculations"
+          }
+        ],
+        "callee_summaries": [
+          {
+            "name": "previewDeposit",
+            "purpose": "Calculates the number of shares to mint for a given asset deposit amount",
+            "formula": "shares_ = floor_div(assets_ * totalSupply_before, totalAssets_before)",
+            "assumptions": [
+              "totalAssets_before > 0",
+              "totalSupply_before >= BOOTSTRAP_MINT",
+              "Standard ERC4626 linear conversion is used"
+            ]
+          },
+          {
+            "name": "_mint",
+            "purpose": "Mints shares to the receiver and transfers assets from the caller",
+            "formula": null,
+            "assumptions": [
+              "Mints exactly shares_ tokens to receiver_",
+              "Transfers exactly assets_ tokens from msg.sender to the vault"
+            ]
+          }
+        ],
+        "preconditions": [
+          "assets_ > 0",
+          "totalAssets_before > 0",
+          "totalSupply_before >= BOOTSTRAP_MINT",
+          "assets_ * totalSupply_before <= 2^256 - 1"
+        ],
+        "state_transitions": [
+          "totalSupply_after == totalSupply_before + shares_",
+          "totalAssets_after == totalAssets_before + assets_"
+        ],
+        "safety_properties": [
+          "implies(assets_ > 0, shares_ > 0)",
+          "implies(assets_ > 0, floor_div(assets_ * totalSupply_before, totalAssets_before) >= 1)"
+        ],
+        "violation_conditions": [
+          "and(assets_ > 0, shares_ == 0)",
+          "and(assets_ > 0, assets_ * totalSupply_before < totalAssets_before)"
+        ],
+        "z3_encoding_notes": [
+          "{'description': 'Use floor_div to model Solidity integer division which truncates toward zero for positive operands', 'note': 'floor_div(a, b) correctly models a / b in Solidity for unsigned integers'}",
+          "{'description': 'The vulnerability manifests when assets_ * totalSupply_before < totalAssets_before, making the division result 0', 'note': 'Z3 should find a satisfying assignment where assets_ is small relative to totalAssets_before / totalSupply_before'}",
+          "{'description': 'BOOTSTRAP_MINT ensures totalSupply_before > 0, but does not prevent the zero-share outcome if totalAssets_before is large enough', 'note': 'Model BOOTSTRAP_MINT as a positive constant; totalSupply_before is at least BOOTSTRAP_MINT'}"
+        ],
+        "unsupported_features": [],
+        "missing_context": [
+          "{'description': 'The exact implementation of previewDeposit is not provided in the source context', 'detail': 'Assuming standard ERC4626 formula shares = assets * totalSupply / totalAssets, but the actual implementation may differ or include fees'}",
+          "{'description': 'The implementation of _mint is not fully provided', 'detail': 'Assuming it mints the specified shares and transfers the specified assets, but it may contain additional logic or validation'}",
+          "{'description': 'The value of BOOTSTRAP_MINT is not provided', 'detail': 'This constant affects the minimum totalSupply and thus the rounding behavior; it is typically a small number like 1e6 or 1e18'}"
+        ],
+        "confidence": "medium"
+      },
+      "verification": {
+        "status": "unsupported",
+        "solver_status": "not_run",
+        "counterexample": null,
+        "explanation": "Unsupported arithmetic operator",
+        "warnings": [
+          "{'description': 'The exact implementation of previewDeposit is not provided in the source context', 'detail': 'Assuming standard ERC4626 formula shares = assets * totalSupply / totalAssets, but the actual implementation may differ or include fees'}",
+          "{'description': 'The implementation of _mint is not fully provided', 'detail': 'Assuming it mints the specified shares and transfers the specified assets, but it may contain additional logic or validation'}",
+          "{'description': 'The value of BOOTSTRAP_MINT is not provided', 'detail': 'This constant affects the minimum totalSupply and thus the rounding behavior; it is typically a small number like 1e6 or 1e18'}"
+        ]
+      },
+      "limitations": [
+        "Z3 checks only the encoded formal model, not full Solidity or EVM semantics.",
+        "sat means possible_bug, never verified_bug.",
+        "Heuristic source slicing may miss relevant context until Slither integration is added."
+      ],
+      "recommended_manual_review_steps": [
+        "Review missing_context and unsupported_features before trusting solver output.",
+        "Compare each formula against Solidity source and protocol documentation.",
+        "Manually validate any counterexample against real units, rounding, and access control."
+      ]
+    }
+  ]
+}
