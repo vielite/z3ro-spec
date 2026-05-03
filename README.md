@@ -36,11 +36,30 @@ from the project root. Exported variables override `.env` values.
 
 ## Commands
 
+Put the vulnerability description in a text file:
+
+```bash
+cat > vuln.txt <<'EOF'
+borrow must not make health factor fall below MIN_HEALTH_FACTOR
+EOF
+```
+
 Run the full pipeline:
 
 ```bash
 uv run z3ro-spec scan results.json \
-  --vulnerability "borrow must not make health factor fall below MIN_HEALTH_FACTOR" \
+  --vulnerability vuln.txt \
+  --top-candidates 5 \
+  --min-value 0 \
+  --out reports/
+```
+
+Skip lightweight LLM triage and send deterministic, value-positive candidates directly to formal verification:
+
+```bash
+uv run z3ro-spec scan results.json \
+  --vulnerability vuln.txt \
+  --verify \
   --top-candidates 5 \
   --min-value 0 \
   --out reports/
@@ -50,7 +69,7 @@ Run deterministic filters plus lightweight LLM triage:
 
 ```bash
 uv run z3ro-spec triage results.json \
-  --vulnerability "deposit must not mint zero shares for nonzero assets" \
+  --vulnerability vuln.txt \
   --top-candidates 5 \
   --min-value 0 \
   --out triaged.json
@@ -66,7 +85,7 @@ Generate structured formal specifications without running Z3:
 
 ```bash
 uv run z3ro-spec spec results.json \
-  --vulnerability "swap must not violate constant product invariant" \
+  --vulnerability vuln.txt \
   --top-candidates 5 \
   --min-value 0 \
   --out specs/
@@ -110,7 +129,7 @@ Use `--min-value` to raise the exclusion threshold.
 
 ```bash
 uv run z3ro-spec scan output.json \
-  --vulnerability "borrow must not make health factor fall below minimum" \
+  --vulnerability vuln.txt \
   --top-candidates 5 \
   --min-value 0 \
   --out reports/
@@ -118,11 +137,22 @@ uv run z3ro-spec scan output.json \
 
 ```bash
 uv run z3ro-spec scan output.json \
-  --vulnerability "vault deposit must not mint zero shares for nonzero assets" \
+  --vulnerability vuln.txt \
   --top-candidates 10 \
   --min-value 100000 \
   --out reports/high-value-vaults/
 ```
+
+## On-chain parameter resolution
+
+When verified ABI is available, `scan` and `spec` attempt to read relevant zero-argument
+configuration getters through Etherscan `eth_call`. This is useful for liquidation bugs where
+deployed values such as `collateralFactorBps`, `liquidationIncentiveBps`,
+`liquidationFeeBps`, `liquidationFactorBps`, `closeFactor`, or `lltv` determine whether a
+symbolic counterexample applies to the live market.
+
+Resolved values are added to the formal-spec prompt, injected as concrete Z3 preconditions, and
+included in reports under `onchain_parameters`.
 
 ## Limitations
 

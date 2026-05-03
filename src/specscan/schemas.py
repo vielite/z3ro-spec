@@ -104,8 +104,25 @@ class FormalVariable(BaseModel):
             "state_variable": "state",
             "const": "constant",
             "immutable": "constant",
+            "config": "constant",
+            "configuration": "constant",
+            "protocol_parameter": "constant",
+            "risk_parameter": "constant",
+            "admin_parameter": "constant",
+            "system_parameter": "constant",
+            "global": "constant",
+            "formula": "derived",
+            "intermediate": "derived",
+            "calculation": "derived",
+            "calculated_value": "derived",
+            "oracle": "external",
+            "price": "external",
+            "market": "external",
         }
-        return role_aliases.get(normalized, normalized)
+        role = role_aliases.get(normalized, normalized)
+        if role in {"state", "argument", "constant", "derived", "external", "unknown"}:
+            return role
+        return "unknown"
 
     @field_validator("symbolic_type", mode="before")
     @classmethod
@@ -200,6 +217,7 @@ class FindingReport(BaseModel):
     triage_result: TriagedFinding | None = None
     formal_spec: FormalSpec | None = None
     verification: VerificationResult | None = None
+    onchain_parameters: dict[str, str | int | bool] = Field(default_factory=dict)
     limitations: list[str] = Field(default_factory=list)
     recommended_manual_review_steps: list[str] = Field(default_factory=list)
 

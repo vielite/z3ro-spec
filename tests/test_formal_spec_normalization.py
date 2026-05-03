@@ -27,6 +27,20 @@ def test_formal_spec_accepts_common_llm_formula_objects():
                     "role": "output",
                     "description": "minted shares",
                 },
+                {
+                    "name": "liquidationIncentiveBps",
+                    "solidity_type": "uint256",
+                    "symbolic_type": "uint",
+                    "role": "config",
+                    "description": "risk parameter",
+                },
+                {
+                    "name": "weird_label",
+                    "solidity_type": "uint256",
+                    "symbolic_type": "uint",
+                    "role": "confidence_parameter",
+                    "description": "unsupported role label",
+                },
             ],
             "callee_summaries": [],
             "preconditions": [{"condition": "assets > 0", "description": "nonzero"}],
@@ -43,9 +57,10 @@ def test_formal_spec_accepts_common_llm_formula_objects():
     assert spec.variables[0].role == "argument"
     assert spec.variables[0].symbolic_type == "uint"
     assert spec.variables[1].role == "derived"
+    assert spec.variables[2].role == "constant"
+    assert spec.variables[3].role == "unknown"
     assert spec.preconditions == ["assets > 0"]
     assert spec.state_transitions == ["shares = assets / 2"]
     assert spec.safety_properties == ["implies(assets > 0, shares > 0)"]
     assert spec.violation_conditions == ["and(assets > 0, shares == 0)"]
     assert spec.confidence == "high"
-

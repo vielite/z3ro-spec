@@ -80,6 +80,18 @@ def render_markdown_report(
                     f"- Violation conditions: `{report.formal_spec.violation_conditions}`",
                 ]
             )
+        if report.onchain_parameters:
+            lines.extend(
+                [
+                    "",
+                    "### On-Chain Parameters",
+                    "",
+                    *[
+                        f"- `{name}`: `{value}`"
+                        for name, value in sorted(report.onchain_parameters.items())
+                    ],
+                ]
+            )
         if report.verification:
             lines.extend(
                 [

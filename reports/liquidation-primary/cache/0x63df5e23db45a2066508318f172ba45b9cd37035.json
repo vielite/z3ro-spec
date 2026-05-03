@@ -1,0 +1,962 @@
+{
+  "address": "0x63df5e23db45a2066508318f172ba45b9cd37035",
+  "contract_name": "Market",
+  "source_code": "// SPDX-License-Identifier: UNLICENSED\r\npragma solidity ^0.8.13;\r\n\r\n// Caution. We assume all failed transfers cause reverts and ignore the returned bool.\r\ninterface IERC20 {\r\n    function transfer(address,uint) external returns (bool);\r\n    function transferFrom(address,address,uint) external returns (bool);\r\n    function balanceOf(address) external view returns (uint);\r\n}\r\n\r\ninterface IOracle {\r\n    function getPrice(address,uint) external returns (uint);\r\n    function viewPrice(address,uint) external view returns (uint);\r\n}\r\n\r\ninterface IEscrow {\r\n    function initialize(IERC20 _token, address beneficiary) external;\r\n    function onDeposit() external;\r\n    function pay(address recipient, uint amount) external;\r\n    function balance() external view returns (uint);\r\n}\r\n\r\ninterface IDolaBorrowingRights {\r\n    function onBorrow(address user, uint additionalDebt) external;\r\n    function onRepay(address user, uint repaidDebt) external;\r\n    function onForceReplenish(address user, address replenisher, uint amount, uint replenisherReward) external;\r\n    function balanceOf(address user) external view returns (uint);\r\n    function deficitOf(address user) external view returns (uint);\r\n    function replenishmentPriceBps() external view returns (uint);\r\n}\r\n\r\ninterface IBorrowController {\r\n    function borrowAllowed(address msgSender, address borrower, uint amount) external returns (bool);\r\n    function onRepay(uint amount) external;\r\n}\r\n\r\ncontract Market {\r\n\r\n    address public gov;\r\n    address public lender;\r\n    address public pauseGuardian;\r\n    address public immutable escrowImplementation;\r\n    IDolaBorrowingRights public immutable dbr;\r\n    IBorrowController public borrowController;\r\n    IERC20 public immutable dola = IERC20(0x865377367054516e17014CcdED1e7d814EDC9ce4);\r\n    IERC20 public immutable collateral;\r\n    IOracle public oracle;\r\n    uint public collateralFactorBps;\r\n    uint public replenishmentIncentiveBps;\r\n    uint public liquidationIncentiveBps;\r\n    uint public liquidationFeeBps;\r\n    uint public liquidationFactorBps = 5000; // 50% by default\r\n    bool immutable callOnDepositCallback;\r\n    bool public borrowPaused;\r\n    uint public totalDebt;\r\n    uint256 internal immutable INITIAL_CHAIN_ID;\r\n    bytes32 internal immutable INITIAL_DOMAIN_SEPARATOR;\r\n    mapping (address => IEscrow) public escrows; // user => escrow\r\n    mapping (address => uint) public debts; // user => debt\r\n    mapping(address => uint256) public nonces; // user => nonce\r\n\r\n    constructor (\r\n        address _gov,\r\n        address _lender,\r\n        address _pauseGuardian,\r\n        address _escrowImplementation,\r\n        IDolaBorrowingRights _dbr,\r\n        IERC20 _collateral,\r\n        IOracle _oracle,\r\n        uint _collateralFactorBps,\r\n        uint _replenishmentIncentiveBps,\r\n        uint _liquidationIncentiveBps,\r\n        bool _callOnDepositCallback\r\n    ) {\r\n        require(_collateralFactorBps < 10000, \"Invalid collateral factor\");\r\n        require(_liquidationIncentiveBps > 0 && _liquidationIncentiveBps < 10000, \"Invalid liquidation incentive\");\r\n        require(_replenishmentIncentiveBps < 10000, \"Replenishment incentive must be less than 100%\");\r\n        gov = _gov;\r\n        lender = _lender;\r\n        pauseGuardian = _pauseGuardian;\r\n        escrowImplementation = _escrowImplementation;\r\n        dbr = _dbr;\r\n        collateral = _collateral;\r\n        oracle = _oracle;\r\n        collateralFactorBps = _collateralFactorBps;\r\n        replenishmentIncentiveBps = _replenishmentIncentiveBps;\r\n        liquidationIncentiveBps = _liquidationIncentiveBps;\r\n        callOnDepositCallback = _callOnDepositCallback;\r\n        INITIAL_CHAIN_ID = block.chainid;\r\n        INITIAL_DOMAIN_SEPARATOR = computeDomainSeparator();\r\n        if(collateralFactorBps > 0){\r\n            uint unsafeLiquidationIncentive = (10000 - collateralFactorBps) * (liquidationFeeBps + 10000) / collateralFactorBps;\r\n            require(liquidationIncentiveBps < unsafeLiquidationIncentive,  \"Liquidation param allow profitable self liquidation\");\r\n        }\r\n    }\r\n    \r\n    modifier onlyGov {\r\n        require(msg.sender == gov, \"Only gov can call this function\");\r\n        _;\r\n    }\r\n\r\n    modifier liquidationParamChecker {\r\n        _;\r\n        if(collateralFactorBps > 0){\r\n            uint unsafeLiquidationIncentive = (10000 - collateralFactorBps) * (liquidationFeeBps + 10000) / collateralFactorBps;\r\n            require(liquidationIncentiveBps < unsafeLiquidationIncentive,  \"New liquidation param allow profitable self liquidation\");\r\n        }\r\n    }\r\n\r\n    function DOMAIN_SEPARATOR() public view virtual returns (bytes32) {\r\n        return block.chainid == INITIAL_CHAIN_ID ? INITIAL_DOMAIN_SEPARATOR : computeDomainSeparator();\r\n    }\r\n\r\n    function computeDomainSeparator() internal view virtual returns (bytes32) {\r\n        return\r\n            keccak256(\r\n                abi.encode(\r\n                    keccak256(\"EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)\"),\r\n                    keccak256(bytes(\"DBR MARKET\")),\r\n                    keccak256(\"1\"),\r\n                    block.chainid,\r\n                    address(this)\r\n                )\r\n            );\r\n    }\r\n\r\n    /**\r\n    @notice sets the oracle to a new oracle. Only callable by governance.\r\n    @param _oracle The new oracle conforming to the IOracle interface.\r\n    */\r\n    function setOracle(IOracle _oracle) public onlyGov { oracle = _oracle; }\r\n\r\n    /**\r\n    @notice sets the borrow controller to a new borrow controller. Only callable by governance.\r\n    @param _borrowController The new borrow controller conforming to the IBorrowController interface.\r\n    */\r\n    function setBorrowController(IBorrowController _borrowController) public onlyGov { borrowController = _borrowController; }\r\n\r\n    /**\r\n    @notice sets the address of governance. Only callable by governance.\r\n    @param _gov Address of the new governance.\r\n    */\r\n    function setGov(address _gov) public onlyGov { gov = _gov; }\r\n\r\n    /**\r\n    @notice sets the lender to a new lender. The lender is allowed to recall dola from the contract. Only callable by governance.\r\n    @param _lender Address of the new lender.\r\n    */\r\n    function setLender(address _lender) public onlyGov { lender = _lender; }\r\n\r\n    /**\r\n    @notice sets the pause guardian. The pause guardian can pause borrowing. Only callable by governance.\r\n    @param _pauseGuardian Address of the new pauseGuardian.\r\n    */\r\n    function setPauseGuardian(address _pauseGuardian) public onlyGov { pauseGuardian = _pauseGuardian; }\r\n    \r\n    /**\r\n    @notice sets the Collateral Factor requirement of the market as measured in basis points. 1 = 0.01%. Only callable by governance.\r\n    @dev Collateral factor mus be set below 100%\r\n    @param _collateralFactorBps The new collateral factor as measured in basis points. \r\n    */\r\n    function setCollateralFactorBps(uint _collateralFactorBps) public onlyGov liquidationParamChecker {\r\n        require(_collateralFactorBps < 10000, \"Invalid collateral factor\");\r\n        collateralFactorBps = _collateralFactorBps;\r\n    }\r\n    \r\n    /**\r\n    @notice sets the Liquidation Factor of the market as denoted in basis points.\r\n     The liquidation Factor denotes the maximum amount of debt that can be liquidated in basis points.\r\n     At 5000, 50% of of a borrower's underwater debt can be liquidated. Only callable by governance.\r\n    @dev Must be set between 1 and 10000.\r\n    @param _liquidationFactorBps The new liquidation factor in basis points. 1 = 0.01%/\r\n    */\r\n    function setLiquidationFactorBps(uint _liquidationFactorBps) public onlyGov {\r\n        require(_liquidationFactorBps > 0 && _liquidationFactorBps <= 10000, \"Invalid liquidation factor\");\r\n        liquidationFactorBps = _liquidationFactorBps;\r\n    }\r\n\r\n    /**\r\n    @notice sets the Replenishment Incentive of the market as denoted in basis points.\r\n     The Replenishment Incentive is the percentage paid out to replenishers on a successful forceReplenish call, denoted in basis points.\r\n    @dev Must be set between 1 and 10000.\r\n    @param _replenishmentIncentiveBps The new replenishment incentive set in basis points. 1 = 0.01%\r\n    */\r\n    function setReplenismentIncentiveBps(uint _replenishmentIncentiveBps) public onlyGov {\r\n        require(_replenishmentIncentiveBps > 0 && _replenishmentIncentiveBps < 10000, \"Invalid replenishment incentive\");\r\n        replenishmentIncentiveBps = _replenishmentIncentiveBps;\r\n    }\r\n\r\n    /**\r\n    @notice sets the Liquidation Incentive of the market as denoted in basis points.\r\n     The Liquidation Incentive is the percentage paid out to liquidators of a borrower's debt when successfully liquidated.\r\n    @dev Must be set between 0 and 10000 - liquidation fee.\r\n    @param _liquidationIncentiveBps The new liqudation incentive set in basis points. 1 = 0.01% \r\n    */\r\n    function setLiquidationIncentiveBps(uint _liquidationIncentiveBps) public onlyGov liquidationParamChecker {\r\n        require(_liquidationIncentiveBps > 0 && _liquidationIncentiveBps + liquidationFeeBps < 10000, \"Invalid liquidation incentive\");\r\n        liquidationIncentiveBps = _liquidationIncentiveBps;\r\n    }\r\n\r\n    /**\r\n    @notice sets the Liquidation Fee of the market as denoted in basis points.\r\n     The Liquidation Fee is the percentage paid out to governance of a borrower's debt when successfully liquidated.\r\n    @dev Must be set between 0 and 10000 - liquidation factor.\r\n    @param _liquidationFeeBps The new liquidation fee set in basis points. 1 = 0.01%\r\n    */\r\n    function setLiquidationFeeBps(uint _liquidationFeeBps) public onlyGov liquidationParamChecker {\r\n        require(_liquidationFeeBps > 0 && _liquidationFeeBps + liquidationIncentiveBps < 10000, \"Invalid liquidation fee\");\r\n        liquidationFeeBps = _liquidationFeeBps;\r\n    }\r\n\r\n    /**\r\n    @notice Recalls amount of DOLA to the lender.\r\n    @param amount The amount od DOLA to recall to the the lender.\r\n    */\r\n    function recall(uint amount) public {\r\n        require(msg.sender == lender, \"Only lender can recall\");\r\n        dola.transfer(msg.sender, amount);\r\n    }\r\n\r\n    /**\r\n    @notice Pauses or unpauses borrowing for the market. Only gov can unpause a market, while gov and pauseGuardian can pause it.\r\n    @param _value Boolean representing the state pause state of borrows. true = paused, false = unpaused.\r\n    */\r\n    function pauseBorrows(bool _value) public {\r\n        if(_value) {\r\n            require(msg.sender == pauseGuardian || msg.sender == gov, \"Only pause guardian or governance can pause\");\r\n        } else {\r\n            require(msg.sender == gov, \"Only governance can unpause\");\r\n        }\r\n        borrowPaused = _value;\r\n    }\r\n\r\n    /**\r\n    @notice Internal function for creating an escrow for users to deposit collateral in.\r\n    @dev Uses create2 and minimal proxies to create the escrow at a deterministic address\r\n    @param user The address of the user to create an escrow for.\r\n    */\r\n    function createEscrow(address user) internal returns (IEscrow instance) {\r\n        address implementation = escrowImplementation;\r\n        /// @solidity memory-safe-assembly\r\n        assembly {\r\n            let ptr := mload(0x40)\r\n            mstore(ptr, 0x3d602d80600a3d3981f3363d3d373d3d3d363d73000000000000000000000000)\r\n            mstore(add(ptr, 0x14), shl(0x60, implementation))\r\n            mstore(add(ptr, 0x28), 0x5af43d82803e903d91602b57fd5bf30000000000000000000000000000000000)\r\n            instance := create2(0, ptr, 0x37, user)\r\n        }\r\n        require(instance != IEscrow(address(0)), \"ERC1167: create2 failed\");\r\n        emit CreateEscrow(user, address(instance));\r\n    }\r\n\r\n    /**\r\n    @notice Internal function for getting the escrow of a user.\r\n    @dev If the escrow doesn't exist, an escrow contract is deployed.\r\n    @param user The address of the user owning the escrow.\r\n    */\r\n    function getEscrow(address user) internal returns (IEscrow) {\r\n        if(escrows[user] != IEscrow(address(0))) return escrows[user];\r\n        IEscrow escrow = createEscrow(user);\r\n        escrow.initialize(collateral, user);\r\n        escrows[user] = escrow;\r\n        return escrow;\r\n    }\r\n\r\n    /**\r\n    @notice Deposit amount of collateral into escrow\r\n    @dev Will deposit the amount into the escrow contract.\r\n    @param amount Amount of collateral token to deposit.\r\n    */\r\n    function deposit(uint amount) public {\r\n        deposit(msg.sender, amount);\r\n    }\r\n\r\n    /**\r\n    @notice Deposit and borrow in a single transaction.\r\n    @param amountDeposit Amount of collateral token to deposit into escrow.\r\n    @param amountBorrow Amount of DOLA to borrow.\r\n    */\r\n    function depositAndBorrow(uint amountDeposit, uint amountBorrow) public {\r\n        deposit(amountDeposit);\r\n        borrow(amountBorrow);\r\n    }\r\n\r\n    /**\r\n    @notice Deposit amount of collateral into escrow on behalf of msg.sender\r\n    @dev Will deposit the amount into the escrow contract.\r\n    @param user User to deposit on behalf of.\r\n    @param amount Amount of collateral token to deposit.\r\n    */\r\n    function deposit(address user, uint amount) public {\r\n        IEscrow escrow = getEscrow(user);\r\n        collateral.transferFrom(msg.sender, address(escrow), amount);\r\n        if(callOnDepositCallback) {\r\n            escrow.onDeposit();\r\n        }\r\n        emit Deposit(user, amount);\r\n    }\r\n\r\n    /**\r\n    @notice View function for predicting the deterministic escrow address of a user.\r\n    @dev Only use deposit() function for deposits and NOT the predicted escrow address unless you know what you're doing\r\n    @param user Address of the user owning the escrow.\r\n    */\r\n    function predictEscrow(address user) public view returns (IEscrow predicted) {\r\n        address implementation = escrowImplementation;\r\n        address deployer = address(this);\r\n        /// @solidity memory-safe-assembly\r\n        assembly {\r\n            let ptr := mload(0x40)\r\n            mstore(ptr, 0x3d602d80600a3d3981f3363d3d373d3d3d363d73000000000000000000000000)\r\n            mstore(add(ptr, 0x14), shl(0x60, implementation))\r\n            mstore(add(ptr, 0x28), 0x5af43d82803e903d91602b57fd5bf3ff00000000000000000000000000000000)\r\n            mstore(add(ptr, 0x38), shl(0x60, deployer))\r\n            mstore(add(ptr, 0x4c), user)\r\n            mstore(add(ptr, 0x6c), keccak256(ptr, 0x37))\r\n            predicted := keccak256(add(ptr, 0x37), 0x55)\r\n        }\r\n    }\r\n\r\n    /**\r\n    @notice View function for getting the dollar value of the user's collateral in escrow for the market.\r\n    @param user Address of the user.\r\n    */\r\n    function getCollateralValue(address user) public view returns (uint) {\r\n        IEscrow escrow = predictEscrow(user);\r\n        uint collateralBalance = escrow.balance();\r\n        return collateralBalance * oracle.viewPrice(address(collateral), collateralFactorBps) / 1 ether;\r\n    }\r\n\r\n    /**\r\n    @notice Internal function for getting the dollar value of the user's collateral in escrow for the market.\r\n    @dev Updates the lowest price comparisons of the pessimistic oracle\r\n    @param user Address of the user.\r\n    */\r\n    function getCollateralValueInternal(address user) internal returns (uint) {\r\n        IEscrow escrow = predictEscrow(user);\r\n        uint collateralBalance = escrow.balance();\r\n        return collateralBalance * oracle.getPrice(address(collateral), collateralFactorBps) / 1 ether;\r\n    }\r\n\r\n    /**\r\n    @notice View function for getting the credit limit of a user.\r\n    @dev To calculate the available credit, subtract user debt from credit limit.\r\n    @param user Address of the user.\r\n    */\r\n    function getCreditLimit(address user) public view returns (uint) {\r\n        uint collateralValue = getCollateralValue(user);\r\n        return collateralValue * collateralFactorBps / 10000;\r\n    }\r\n\r\n    /**\r\n    @notice Internal function for getting the credit limit of a user.\r\n    @dev To calculate the available credit, subtract user debt from credit limit. Updates the pessimistic oracle.\r\n    @param user Address of the user.\r\n    */\r\n    function getCreditLimitInternal(address user) internal returns (uint) {\r\n        uint collateralValue = getCollateralValueInternal(user);\r\n        return collateralValue * collateralFactorBps / 10000;\r\n    }\r\n    /**\r\n    @notice Internal function for getting the withdrawal limit of a user.\r\n     The withdrawal limit is how much collateral a user can withdraw before their loan would be underwater. Updates the pessimistic oracle.\r\n    @param user Address of the user.\r\n    */\r\n    function getWithdrawalLimitInternal(address user) internal returns (uint) {\r\n        IEscrow escrow = predictEscrow(user);\r\n        uint collateralBalance = escrow.balance();\r\n        if(collateralBalance == 0) return 0;\r\n        uint debt = debts[user];\r\n        if(debt == 0) return collateralBalance;\r\n        if(collateralFactorBps == 0) return 0;\r\n        uint minimumCollateral = debt * 1 ether / oracle.getPrice(address(collateral), collateralFactorBps) * 10000 / collateralFactorBps;\r\n        if(collateralBalance <= minimumCollateral) return 0;\r\n        return collateralBalance - minimumCollateral;\r\n    }\r\n\r\n    /**\r\n    @notice View function for getting the withdrawal limit of a user.\r\n     The withdrawal limit is how much collateral a user can withdraw before their loan would be underwater.\r\n    @param user Address of the user.\r\n    */\r\n    function getWithdrawalLimit(address user) public view returns (uint) {\r\n        IEscrow escrow = predictEscrow(user);\r\n        uint collateralBalance = escrow.balance();\r\n        if(collateralBalance == 0) return 0;\r\n        uint debt = debts[user];\r\n        if(debt == 0) return collateralBalance;\r\n        if(collateralFactorBps == 0) return 0;\r\n        uint minimumCollateral = debt * 1 ether / oracle.viewPrice(address(collateral), collateralFactorBps) * 10000 / collateralFactorBps;\r\n        if(collateralBalance <= minimumCollateral) return 0;\r\n        return collateralBalance - minimumCollateral;\r\n    }\r\n\r\n    /**\r\n    @notice Internal function for borrowing DOLA against collateral.\r\n    @dev This internal function is shared between the borrow and borrowOnBehalf function\r\n    @param borrower The address of the borrower that debt will be accrued to.\r\n    @param to The address that will receive the borrowed DOLA\r\n    @param amount The amount of DOLA to be borrowed\r\n    */\r\n    function borrowInternal(address borrower, address to, uint amount) internal {\r\n        require(!borrowPaused, \"Borrowing is paused\");\r\n        if(borrowController != IBorrowController(address(0))) {\r\n            require(borrowController.borrowAllowed(msg.sender, borrower, amount), \"Denied by borrow controller\");\r\n        }\r\n        uint credit = getCreditLimitInternal(borrower);\r\n        debts[borrower] += amount;\r\n        require(credit >= debts[borrower], \"Exceeded credit limit\");\r\n        totalDebt += amount;\r\n        dbr.onBorrow(borrower, amount);\r\n        dola.transfer(to, amount);\r\n        emit Borrow(borrower, amount);\r\n    }\r\n\r\n    /**\r\n    @notice Function for borrowing DOLA.\r\n    @dev Will borrow to msg.sender\r\n    @param amount The amount of DOLA to be borrowed.\r\n    */\r\n    function borrow(uint amount) public {\r\n        borrowInternal(msg.sender, msg.sender, amount);\r\n    }\r\n\r\n    /**\r\n    @notice Function for using a signed message to borrow on behalf of an address owning an escrow with collateral.\r\n    @dev Signed messaged can be invalidated by incrementing the nonce. Will always borrow to the msg.sender.\r\n    @param from The address of the user being borrowed from\r\n    @param amount The amount to be borrowed\r\n    @param deadline Timestamp after which the signed message will be invalid\r\n    @param v The v param of the ECDSA signature\r\n    @param r The r param of the ECDSA signature\r\n    @param s The s param of the ECDSA signature\r\n    */\r\n    function borrowOnBehalf(address from, uint amount, uint deadline, uint8 v, bytes32 r, bytes32 s) public {\r\n        require(deadline >= block.timestamp, \"DEADLINE_EXPIRED\");\r\n        unchecked {\r\n            address recoveredAddress = ecrecover(\r\n                keccak256(\r\n                    abi.encodePacked(\r\n                        \"\\x19\\x01\",\r\n                        DOMAIN_SEPARATOR(),\r\n                        keccak256(\r\n                            abi.encode(\r\n                                keccak256(\r\n                                    \"BorrowOnBehalf(address caller,address from,uint256 amount,uint256 nonce,uint256 deadline)\"\r\n                                ),\r\n                                msg.sender,\r\n                                from,\r\n                                amount,\r\n                                nonces[from]++,\r\n                                deadline\r\n                            )\r\n                        )\r\n                    )\r\n                ),\r\n                v,\r\n                r,\r\n                s\r\n            );\r\n            require(recoveredAddress != address(0) && recoveredAddress == from, \"INVALID_SIGNER\");\r\n            borrowInternal(from, msg.sender, amount);\r\n        }\r\n    }\r\n\r\n    /**\r\n    @notice Internal function for withdrawing from the escrow\r\n    @dev The internal function is shared by the withdraw function and withdrawOnBehalf function\r\n    @param from The address owning the escrow to withdraw from.\r\n    @param to The address receiving the tokens\r\n    @param amount The amount being withdrawn.\r\n    */\r\n    function withdrawInternal(address from, address to, uint amount) internal {\r\n        uint limit = getWithdrawalLimitInternal(from);\r\n        require(limit >= amount, \"Insufficient withdrawal limit\");\r\n        require(dbr.deficitOf(from) == 0, \"Can't withdraw with DBR deficit\");\r\n        IEscrow escrow = getEscrow(from);\r\n        escrow.pay(to, amount);\r\n        emit Withdraw(from, to, amount);\r\n    }\r\n\r\n    /**\r\n    @notice Function for withdrawing to msg.sender.\r\n    @param amount Amount to withdraw.\r\n    */\r\n    function withdraw(uint amount) public {\r\n        withdrawInternal(msg.sender, msg.sender, amount);\r\n    }\r\n\r\n    /**\r\n    @notice Function for using a signed message to withdraw on behalf of an address owning an escrow with collateral.\r\n    @dev Signed messaged can be invalidated by incrementing the nonce. Will always withdraw to the msg.sender.\r\n    @param from The address of the user owning the escrow being withdrawn from\r\n    @param amount The amount to be withdrawn\r\n    @param deadline Timestamp after which the signed message will be invalid\r\n    @param v The v param of the ECDSA signature\r\n    @param r The r param of the ECDSA signature\r\n    @param s The s param of the ECDSA signature\r\n    */\r\n    function withdrawOnBehalf(address from, uint amount, uint deadline, uint8 v, bytes32 r, bytes32 s) public {\r\n        require(deadline >= block.timestamp, \"DEADLINE_EXPIRED\");\r\n        unchecked {\r\n            address recoveredAddress = ecrecover(\r\n                keccak256(\r\n                    abi.encodePacked(\r\n                        \"\\x19\\x01\",\r\n                        DOMAIN_SEPARATOR(),\r\n                        keccak256(\r\n                            abi.encode(\r\n                                keccak256(\r\n                                    \"WithdrawOnBehalf(address caller,address from,uint256 amount,uint256 nonce,uint256 deadline)\"\r\n                                ),\r\n                                msg.sender,\r\n                                from,\r\n                                amount,\r\n                                nonces[from]++,\r\n                                deadline\r\n                            )\r\n                        )\r\n                    )\r\n                ),\r\n                v,\r\n                r,\r\n                s\r\n            );\r\n            require(recoveredAddress != address(0) && recoveredAddress == from, \"INVALID_SIGNER\");\r\n            withdrawInternal(from, msg.sender, amount);\r\n        }\r\n    }\r\n\r\n    /**\r\n    @notice Function for incrementing the nonce of the msg.sender, making their latest signed message unusable.\r\n    */\r\n    function invalidateNonce() public {\r\n        nonces[msg.sender]++;\r\n    }\r\n    \r\n    /**\r\n    @notice Function for repaying debt on behalf of user. Debt must be repaid in DOLA.\r\n    @dev If the user has a DBR deficit, they risk initial debt being accrued by forced replenishments.\r\n    @param user Address of the user whose debt is being repaid\r\n    @param amount DOLA amount to be repaid. If set to max uint debt will be repaid in full.\r\n    */\r\n    function repay(address user, uint amount) public {\r\n        uint debt = debts[user];\r\n        if(amount == type(uint).max){\r\n            amount = debt;\r\n        }\r\n        require(debt >= amount, \"Repayment greater than debt\");\r\n        debts[user] -= amount;\r\n        totalDebt -= amount;\r\n        dbr.onRepay(user, amount);\r\n        if(address(borrowController) != address(0)){\r\n            borrowController.onRepay(amount);\r\n        }\r\n        dola.transferFrom(msg.sender, address(this), amount);\r\n        emit Repay(user, msg.sender, amount);\r\n    }\r\n\r\n    /**\r\n    @notice Bundles repayment and withdrawal into a single function call.\r\n    @param repayAmount Amount of DOLA to be repaid\r\n    @param withdrawAmount Amount of underlying to be withdrawn from the escrow\r\n    */\r\n    function repayAndWithdraw(uint repayAmount, uint withdrawAmount) public {\r\n        repay(msg.sender, repayAmount);\r\n        withdraw(withdrawAmount);\r\n    }\r\n\r\n    /**\r\n    @notice Function for forcing a user to replenish their DBR deficit at a pre-determined price.\r\n     The replenishment will accrue additional DOLA debt.\r\n     On a successful call, the caller will be paid a replenishment incentive.\r\n    @dev The function will only top the user back up to 0, meaning that the user will have a DBR deficit again in the next block.\r\n    @param user The address of the user being forced to replenish DBR\r\n    @param amount The amount of DBR the user will be replenished.\r\n    */\r\n    function forceReplenish(address user, uint amount) public {\r\n        uint deficit = dbr.deficitOf(user);\r\n        require(deficit > 0, \"No DBR deficit\");\r\n        require(deficit >= amount, \"Amount > deficit\");\r\n        uint replenishmentCost = amount * dbr.replenishmentPriceBps() / 10000;\r\n        uint replenisherReward = replenishmentCost * replenishmentIncentiveBps / 10000;\r\n        debts[user] += replenishmentCost;\r\n        uint collateralValue = getCollateralValueInternal(user) * (10000 - liquidationIncentiveBps - liquidationFeeBps) / 10000;\r\n        require(collateralValue >= debts[user], \"Exceeded collateral value\");\r\n        totalDebt += replenishmentCost;\r\n        dbr.onForceReplenish(user, msg.sender, amount, replenisherReward);\r\n        dola.transfer(msg.sender, replenisherReward);\r\n    }\r\n    /**\r\n    @notice Function for forcing a user to replenish all of their DBR deficit at a pre-determined price.\r\n     The replenishment will accrue additional DOLA debt.\r\n     On a successful call, the caller will be paid a replenishment incentive.\r\n    @dev The function will only top the user back up to 0, meaning that the user will have a DBR deficit again in the next block.\r\n    @param user The address of the user being forced to replenish DBR\r\n    */\r\n    function forceReplenishAll(address user) public {\r\n        uint deficit = dbr.deficitOf(user);\r\n        forceReplenish(user, deficit);\r\n    }\r\n\r\n    /**\r\n    @notice Function for liquidating a user's under water debt. Debt is under water when the value of a user's debt is above their collateral factor.\r\n    @param user The user to be liquidated\r\n    @param repaidDebt Th amount of user user debt to liquidate.\r\n    */\r\n    function liquidate(address user, uint repaidDebt) public {\r\n        require(repaidDebt > 0, \"Must repay positive debt\");\r\n        uint debt = debts[user];\r\n        require(getCreditLimitInternal(user) < debt, \"User debt is healthy\");\r\n        require(repaidDebt <= debt * liquidationFactorBps / 10000, \"Exceeded liquidation factor\");\r\n        uint price = oracle.getPrice(address(collateral), collateralFactorBps);\r\n        uint liquidatorReward = repaidDebt * 1 ether / price;\r\n        liquidatorReward += liquidatorReward * liquidationIncentiveBps / 10000;\r\n        debts[user] -= repaidDebt;\r\n        totalDebt -= repaidDebt;\r\n        dbr.onRepay(user, repaidDebt);\r\n        dola.transferFrom(msg.sender, address(this), repaidDebt);\r\n        IEscrow escrow = predictEscrow(user);\r\n        escrow.pay(msg.sender, liquidatorReward);\r\n        if(liquidationFeeBps > 0) {\r\n            uint liquidationFee = repaidDebt * 1 ether / price * liquidationFeeBps / 10000;\r\n            uint balance = escrow.balance();\r\n            if(balance >= liquidationFee) {\r\n                escrow.pay(gov, liquidationFee);\r\n            } else if(balance > 0) {\r\n                escrow.pay(gov, balance);\r\n            }\r\n        }\r\n        emit Liquidate(user, msg.sender, repaidDebt, liquidatorReward);\r\n    }\r\n    \r\n    event Deposit(address indexed account, uint amount);\r\n    event Borrow(address indexed account, uint amount);\r\n    event Withdraw(address indexed account, address indexed to, uint amount);\r\n    event Repay(address indexed account, address indexed repayer, uint amount);\r\n    event Liquidate(address indexed account, address indexed liquidator, uint repaidDebt, uint liquidatorReward);\r\n    event CreateEscrow(address indexed user, address escrow);\r\n}",
+  "abi": [
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_gov",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "_lender",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "_pauseGuardian",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "_escrowImplementation",
+          "type": "address"
+        },
+        {
+          "internalType": "contract IDolaBorrowingRights",
+          "name": "_dbr",
+          "type": "address"
+        },
+        {
+          "internalType": "contract IERC20",
+          "name": "_collateral",
+          "type": "address"
+        },
+        {
+          "internalType": "contract IOracle",
+          "name": "_oracle",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_collateralFactorBps",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_replenishmentIncentiveBps",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_liquidationIncentiveBps",
+          "type": "uint256"
+        },
+        {
+          "internalType": "bool",
+          "name": "_callOnDepositCallback",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "constructor"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "account",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "Borrow",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "user",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "escrow",
+          "type": "address"
+        }
+      ],
+      "name": "CreateEscrow",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "account",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "Deposit",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "account",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "liquidator",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "repaidDebt",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "liquidatorReward",
+          "type": "uint256"
+        }
+      ],
+      "name": "Liquidate",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "account",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "repayer",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "Repay",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "account",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "to",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "Withdraw",
+      "type": "event"
+    },
+    {
+      "inputs": [],
+      "name": "DOMAIN_SEPARATOR",
+      "outputs": [
+        {
+          "internalType": "bytes32",
+          "name": "",
+          "type": "bytes32"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "borrow",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "borrowController",
+      "outputs": [
+        {
+          "internalType": "contract IBorrowController",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "from",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "deadline",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint8",
+          "name": "v",
+          "type": "uint8"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "r",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "s",
+          "type": "bytes32"
+        }
+      ],
+      "name": "borrowOnBehalf",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "borrowPaused",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "collateral",
+      "outputs": [
+        {
+          "internalType": "contract IERC20",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "collateralFactorBps",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "dbr",
+      "outputs": [
+        {
+          "internalType": "contract IDolaBorrowingRights",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "name": "debts",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "user",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "deposit",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "deposit",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "amountDeposit",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "amountBorrow",
+          "type": "uint256"
+        }
+      ],
+      "name": "depositAndBorrow",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "dola",
+      "outputs": [
+        {
+          "internalType": "contract IERC20",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "escrowImplementation",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "name": "escrows",
+      "outputs": [
+        {
+          "internalType": "contract IEscrow",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "user",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "forceReplenish",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "user",
+          "type": "address"
+        }
+      ],
+      "name": "forceReplenishAll",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "user",
+          "type": "address"
+        }
+      ],
+      "name": "getCollateralValue",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "user",
+          "type": "address"
+        }
+      ],
+      "name": "getCreditLimit",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "user",
+          "type": "address"
+        }
+      ],
+      "name": "getWithdrawalLimit",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "gov",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "invalidateNonce",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "lender",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "user",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "repaidDebt",
+          "type": "uint256"
+        }
+      ],
+      "name": "liquidate",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "liquidationFactorBps",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "liquidationFeeBps",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "liquidationIncentiveBps",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "name": "nonces",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "oracle",
+      "outputs": [
+        {
+          "internalType": "contract IOracle",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bool",
+          "name": "_value",
+          "type": "bool"
+        }
+      ],
+      "name": "pauseBorrows",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "pauseGuardian",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "user",
+          "type": "address"
+        }
+      ],
+      "name": "predictEscrow",
+      "outputs": [
+        {
+          "internalType": "contract IEscrow",
+          "name": "predicted",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "recall",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "user",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "repay",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "repayAmount",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "withdrawAmount",
+          "type": "uint256"
+        }
+      ],
+      "name": "repayAndWithdraw",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "replenishmentIncentiveBps",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "contract IBorrowController",
+          "name": "_borrowController",
+          "type": "address"
+        }
+      ],
+      "name": "setBorrowController",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "_collateralFactorBps",
+          "type": "uint256"
+        }
+      ],
+      "name": "setCollateralFactorBps",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_gov",
+          "type": "address"
+        }
+      ],
+      "name": "setGov",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_lender",
+          "type": "address"
+        }
+      ],
+      "name": "setLender",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "_liquidationFactorBps",
+          "type": "uint256"
+        }
+      ],
+      "name": "setLiquidationFactorBps",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "_liquidationFeeBps",
+          "type": "uint256"
+        }
+      ],
+      "name": "setLiquidationFeeBps",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "_liquidationIncentiveBps",
+          "type": "uint256"
+        }
+      ],
+      "name": "setLiquidationIncentiveBps",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "contract IOracle",
+          "name": "_oracle",
+          "type": "address"
+        }
+      ],
+      "name": "setOracle",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_pauseGuardian",
+          "type": "address"
+        }
+      ],
+      "name": "setPauseGuardian",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "_replenishmentIncentiveBps",
+          "type": "uint256"
+        }
+      ],
+      "name": "setReplenismentIncentiveBps",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "totalDebt",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "withdraw",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "from",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "deadline",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint8",
+          "name": "v",
+          "type": "uint8"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "r",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "s",
+          "type": "bytes32"
+        }
+      ],
+      "name": "withdrawOnBehalf",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  ],
+  "compiler_version": "v0.8.13+commit.abaa5c0e",
+  "proxy": false,
+  "implementation": null
+}

@@ -25,6 +25,8 @@ def run_z3(
             explanation="Spec contains unsupported features.",
             warnings=spec.unsupported_features,
         )
+    if spec.unsupported_features:
+        warnings.extend(spec.unsupported_features)
     if not spec.violation_conditions:
         return VerificationResult(
             status="model_incomplete",
@@ -46,13 +48,41 @@ def run_z3(
         prepared_preconditions = list(spec.preconditions)
         prepared_transitions = _prepare_transitions(spec, prepared_preconditions, warnings)
         for expression in prepared_preconditions:
-            solver.add(parse_expression(expression, symbols))
+            parsed = _parse_or_skip(
+                expression,
+                symbols,
+                warnings,
+                allow_unsupported=allow_unsupported,
+                kind="precondition",
+            )
+            if parsed is not None:
+                solver.add(parsed)
         for transition in prepared_transitions:
-            _add_transition(solver, transition, symbols)
-        violations = [
-            parse_expression(condition, symbols)
-            for condition in spec.violation_conditions
-        ]
+            _add_transition(
+                solver,
+                transition,
+                symbols,
+                warnings,
+                allow_unsupported=allow_unsupported,
+            )
+        violations = []
+        for condition in spec.violation_conditions:
+            parsed = _parse_or_skip(
+                condition,
+                symbols,
+                warnings,
+                allow_unsupported=allow_unsupported,
+                kind="violation condition",
+            )
+            if parsed is not None:
+                violations.append(parsed)
+        if not violations:
+            return VerificationResult(
+                status="unsupported",
+                solver_status="not_run",
+                explanation="No violation conditions could be encoded for Z3.",
+                warnings=warnings,
+            )
         solver.add(z3.Or(*violations) if len(violations) > 1 else violations[0])
     except ExpressionParseError as exc:
         return VerificationResult(
@@ -111,6 +141,23 @@ def run_z3(
     )
 
 
+def _parse_or_skip(
+    expression: str,
+    symbols: dict[str, Any],
+    warnings: list[str],
+    *,
+    allow_unsupported: bool,
+    kind: str,
+) -> Any | None:
+    try:
+        return parse_expression(expression, symbols)
+    except ExpressionParseError as exc:
+        if not allow_unsupported:
+            raise
+        warnings.append(f"Skipped unsupported {kind} `{expression}`: {exc}")
+        return None
+
+
 def _prepare_transitions(
     spec: FormalSpec,
     preconditions: list[str],
@@ -157,15 +204,27 @@ def _replace_call_transition_with_callee_formula(
     return None
 
 
-def _add_transition(solver: z3.Solver, transition: str, symbols: dict[str, Any]) -> None:
+def _add_transition(
+    solver: z3.Solver,
+    transition: str,
+    symbols: dict[str, Any],
+    warnings: list[str],
+    *,
+    allow_unsupported: bool,
+) -> None:
     assignment = _split_assignment(transition)
-    if assignment:
-        name, expression = assignment
-        if name not in symbols:
-            symbols[name] = z3.Int(name)
-        solver.add(symbols[name] == parse_expression(expression, symbols))
-    else:
-        solver.add(parse_expression(transition, symbols))
+    try:
+        if assignment:
+            name, expression = assignment
+            if name not in symbols:
+                symbols[name] = z3.Int(name)
+            solver.add(symbols[name] == parse_expression(expression, symbols))
+        else:
+            solver.add(parse_expression(transition, symbols))
+    except ExpressionParseError as exc:
+        if not allow_unsupported:
+            raise
+        warnings.append(f"Skipped unsupported state transition `{transition}`: {exc}")
 
 
 def _split_assignment(transition: str) -> tuple[str, str] | None:

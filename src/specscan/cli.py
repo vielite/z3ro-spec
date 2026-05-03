@@ -9,11 +9,18 @@ from rich.console import Console
 
 from specscan.analysis.context_builder import build_source_context
 from specscan.analysis.fp_filters import deterministic_filter
+from specscan.analysis.onchain_params import (
+    append_parameter_context,
+    inject_parameter_preconditions,
+    resolve_onchain_parameters,
+)
 from specscan.analysis.prioritizer import (
     filter_by_value,
     priority_from_triage,
     select_top_candidates,
 )
+from specscan.analysis.spec_refinement import refine_oracle_assumptions
+from specscan.analysis.spec_templates import apply_spec_template
 from specscan.config import Settings
 from specscan.etherscan.client import EtherscanClient, EtherscanError
 from specscan.llm.client import OpenAICompatibleClient
@@ -67,7 +74,14 @@ def _startup(ctx: typer.Context) -> None:
 @app.command()
 def triage(
     results_json: Annotated[Path, typer.Argument()],
-    vulnerability: Annotated[str, typer.Option("--vulnerability", "-v")],
+    vulnerability: Annotated[
+        Path,
+        typer.Option(
+            "--vulnerability",
+            "-v",
+            help="Path to a text file containing the vulnerability description.",
+        ),
+    ],
     out: Annotated[Path, typer.Option("--out", "-o")],
     top_candidates: Annotated[
         int,
@@ -97,12 +111,13 @@ def triage(
         ),
     ] = False,
 ) -> None:
+    vulnerability_description = _load_vulnerability_description(vulnerability)
     findings = load_glider_json(results_json)
     log(f"Loaded {len(findings)} Glider findings")
     llm = _triage_llm()
     prioritized = _prioritize_findings(
         findings,
-        vulnerability,
+        vulnerability_description,
         top_candidates=top_candidates,
         min_value=min_value,
         allow_missing_value=allow_missing_value,
@@ -157,15 +172,23 @@ def fetch_source(
 @app.command()
 def spec(
     results_json: Annotated[Path, typer.Argument()],
-    vulnerability: Annotated[str, typer.Option("--vulnerability", "-v")],
+    vulnerability: Annotated[
+        Path,
+        typer.Option(
+            "--vulnerability",
+            "-v",
+            help="Path to a text file containing the vulnerability description.",
+        ),
+    ],
     out: Annotated[Path, typer.Option("--out", "-o")],
     top_candidates: Annotated[int, typer.Option("--top-candidates")] = 5,
     min_value: Annotated[float, typer.Option("--min-value")] = 0.0,
     allow_missing_value: Annotated[bool, typer.Option("--allow-missing-value")] = False,
 ) -> None:
+    vulnerability_description = _load_vulnerability_description(vulnerability)
     specs = _generate_specs(
         results_json,
-        vulnerability,
+        vulnerability_description,
         top_candidates=top_candidates,
         min_value=min_value,
         allow_missing_value=allow_missing_value,
@@ -223,7 +246,14 @@ def verify(
 @app.command()
 def scan(
     results_json: Annotated[Path, typer.Argument()],
-    vulnerability: Annotated[str, typer.Option("--vulnerability", "-v")],
+    vulnerability: Annotated[
+        Path,
+        typer.Option(
+            "--vulnerability",
+            "-v",
+            help="Path to a text file containing the vulnerability description.",
+        ),
+    ],
     out: Annotated[Path, typer.Option("--out", "-o")],
     top_candidates: Annotated[
         int,
@@ -254,17 +284,32 @@ def scan(
     ] = False,
     allow_incomplete: Annotated[bool, typer.Option("--allow-incomplete")] = False,
     allow_unsupported: Annotated[bool, typer.Option("--allow-unsupported")] = False,
+    skip_triage: Annotated[
+        bool,
+        typer.Option(
+            "--skip-triage",
+            "--verify",
+            help=(
+                "Skip lightweight LLM triage and send deterministic, value-positive "
+                "candidates directly to formal verification."
+            ),
+        ),
+    ] = False,
 ) -> None:
+    vulnerability_description = _load_vulnerability_description(vulnerability)
     findings = load_glider_json(results_json)
     log(f"Loaded {len(findings)} Glider findings")
-    triage_llm = _triage_llm()
+    triage_llm = None if skip_triage else _triage_llm()
+    if skip_triage:
+        success("Skipping LLM triage; deterministic candidates will go to verification")
     prioritized = _prioritize_findings(
         findings,
-        vulnerability,
+        vulnerability_description,
         top_candidates=top_candidates,
         min_value=min_value,
         allow_missing_value=allow_missing_value,
         triage_llm=triage_llm,
+        skip_triage=skip_triage,
     )
     selected_triaged = prioritized["selected_triaged"]
     if not selected_triaged:
@@ -298,20 +343,44 @@ def scan(
         )
         log(f"[{index}/{len(selected_triaged)}] Fetching source")
         bundle = _try_fetch_bundle(etherscan, finding.contract)
+        onchain_parameters = resolve_onchain_parameters(
+            bundle,
+            etherscan,
+            finding.contract,
+            logger=log,
+        )
+        if onchain_parameters:
+            success(
+                f"[{index}/{len(selected_triaged)}] Resolved on-chain parameters: "
+                + ", ".join(
+                    f"{name}={value}" for name, value in sorted(onchain_parameters.items())
+                )
+            )
         log(f"[{index}/{len(selected_triaged)}] Building source context")
-        context = build_source_context(finding, bundle, vulnerability)
+        context = build_source_context(finding, bundle, vulnerability_description)
+        source_context = append_parameter_context(context.as_prompt_text(), onchain_parameters)
         log(
             f"[{index}/{len(selected_triaged)}] Source context size: "
-            f"{len(context.as_prompt_text())} chars"
+            f"{len(source_context)} chars"
         )
         log(f"[{index}/{len(selected_triaged)}] Generating formal spec")
         formal_spec = generate_formal_spec(
             finding,
-            vulnerability,
-            context.as_prompt_text(),
+            vulnerability_description,
+            source_context,
             triage=triaged,
             llm_client=formal_llm,
         )
+        refine_oracle_assumptions(formal_spec, source_context)
+        applied_template = apply_spec_template(
+            formal_spec,
+            finding,
+            source_context,
+            onchain_parameters,
+        )
+        if applied_template:
+            success(f"[{index}/{len(selected_triaged)}] Applied template: {applied_template}")
+        inject_parameter_preconditions(formal_spec, onchain_parameters)
         log(
             f"[{index}/{len(selected_triaged)}] Formal spec confidence="
             f"{formal_spec.confidence} missing_context={len(formal_spec.missing_context)} "
@@ -333,10 +402,11 @@ def scan(
                 contract_name=finding.contract_name,
                 function_source_lines=finding.sol_function_source_lines,
                 value=finding.value,
-                vulnerability_description=vulnerability,
+                vulnerability_description=vulnerability_description,
                 triage_result=triaged,
                 formal_spec=formal_spec,
                 verification=verification,
+                onchain_parameters=onchain_parameters,
                 limitations=_standard_limitations(),
                 recommended_manual_review_steps=_manual_steps(),
             )
@@ -391,17 +461,40 @@ def _generate_specs(
             f"[{index}/{len(selected_triaged)}] Generating spec for {_candidate_label(finding)}"
         )
         bundle = _try_fetch_bundle(etherscan, finding.contract)
-        context = build_source_context(finding, bundle, vulnerability)
-        specs.append(
-            generate_formal_spec(
-                finding,
-                vulnerability,
-                context.as_prompt_text(),
-                triage=triaged,
-                llm_client=formal_llm,
-            )
+        onchain_parameters = resolve_onchain_parameters(
+            bundle,
+            etherscan,
+            finding.contract,
+            logger=log,
         )
+        context = build_source_context(finding, bundle, vulnerability)
+        source_context = append_parameter_context(context.as_prompt_text(), onchain_parameters)
+        formal_spec = generate_formal_spec(
+            finding,
+            vulnerability,
+            source_context,
+            triage=triaged,
+            llm_client=formal_llm,
+        )
+        refine_oracle_assumptions(formal_spec, source_context)
+        apply_spec_template(formal_spec, finding, source_context, onchain_parameters)
+        inject_parameter_preconditions(formal_spec, onchain_parameters)
+        specs.append(formal_spec)
     return specs
+
+
+def _load_vulnerability_description(path: Path) -> str:
+    if not path.is_file():
+        raise typer.BadParameter(
+            f"vulnerability file does not exist or is not a file: {path}"
+        )
+    try:
+        description = path.read_text(encoding="utf-8").strip()
+    except OSError as exc:
+        raise typer.BadParameter(f"failed to read vulnerability file {path}: {exc}") from exc
+    if not description:
+        raise typer.BadParameter("vulnerability file is empty")
+    return description
 
 
 def _prioritize_findings(
@@ -412,6 +505,7 @@ def _prioritize_findings(
     min_value: float,
     allow_missing_value: bool,
     triage_llm: OpenAICompatibleClient | None,
+    skip_triage: bool = False,
 ) -> dict[str, object]:
     value_filtered, excluded = filter_by_value(
         findings,
@@ -453,14 +547,27 @@ def _prioritize_findings(
             continue
         success(
             f"[{index}/{len(value_filtered)}] Deterministic kept "
-            f"{_candidate_label(finding)}; starting LLM triage"
+            f"{_candidate_label(finding)}"
         )
-        triaged_result = triage_finding(
-            finding,
-            vulnerability,
-            triage_llm,
-            deterministic_result=deterministic,
-        )
+        if skip_triage:
+            triaged_result = TriagedFinding(
+                original=finding,
+                keep=True,
+                reason="LLM triage skipped; deterministic filters passed",
+                confidence="high",
+                fp_categories=deterministic.fp_categories,
+                vulnerability_relevance=(
+                    "Candidate selected for formal verification without LLM triage."
+                ),
+            )
+        else:
+            log(f"[{index}/{len(value_filtered)}] Starting LLM triage")
+            triaged_result = triage_finding(
+                finding,
+                vulnerability,
+                triage_llm,
+                deterministic_result=deterministic,
+            )
         (success if triaged_result.keep else error)(
             f"[{index}/{len(value_filtered)}] Triage result "
             f"{_candidate_label(finding)} keep={triaged_result.keep} "
@@ -515,6 +622,7 @@ def _prioritize_findings(
         "selected_for_formal_verification": len(selected_triaged),
         "top_candidates_requested": top_candidates,
         "min_value": min_value,
+        "llm_triage_skipped": int(skip_triage),
     }
     success(
         "Prioritization selected "

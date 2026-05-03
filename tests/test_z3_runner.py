@@ -171,3 +171,46 @@ def test_callee_formula_replaces_unsupported_named_call():
 
     assert result.status == "possible_bug"
     assert result.solver_status == "sat"
+
+
+def test_allow_unsupported_skips_bad_formulas_and_runs_supported_violations():
+    spec = spec_with(
+        ["debt_before", "debt_after", "repaidDebt", "collateralFactorBps"],
+        [
+            "debt_before > getCreditLimitInternal(user)",
+            "repaidDebt > 0",
+            "collateralFactorBps == 9200",
+        ],
+        [
+            "debt_after = debt_before - repaidDebt",
+            "external_result = oracle.getPrice(user)",
+        ],
+        [
+            "unsupported_call(user) > 0",
+            "collateralFactorBps >= 9000",
+        ],
+    )
+    spec.unsupported_features = ["oracle side effects not modeled"]
+
+    result = run_z3(spec, allow_unsupported=True)
+
+    assert result.status == "possible_bug"
+    assert result.solver_status == "sat"
+    assert any("Skipped unsupported precondition" in warning for warning in result.warnings)
+    assert any("Skipped unsupported state transition" in warning for warning in result.warnings)
+    assert any("Skipped unsupported violation condition" in warning for warning in result.warnings)
+
+
+def test_allow_unsupported_reports_when_no_violation_can_be_encoded():
+    spec = spec_with(
+        ["x"],
+        [],
+        [],
+        ["unsupported_call(user) > 0"],
+    )
+
+    result = run_z3(spec, allow_unsupported=True)
+
+    assert result.status == "unsupported"
+    assert result.solver_status == "not_run"
+    assert result.explanation == "No violation conditions could be encoded for Z3."

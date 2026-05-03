@@ -66,6 +66,13 @@ Use formulas compatible with this small Z3 expression language when possible:
 integer variables, boolean variables, +, -, *, /, %, >=, <=, >, <, ==, !=, and, or, not,
 min(a,b), max(a,b), floor_div(a,b), ceil_div(a,b), implies(a,b).
 
+Model oracle and price-feed calls as positive symbolic external variables unless concrete
+resolved values are supplied in the context. For example, treat `oracle.getPrice(...)`,
+`getAssetPrice(...)`, `latestAnswer()`, `latestRoundData()`, `peek()`, and `read()` as
+`price > 0`, `oracle_price > 0`, or a similarly named positive integer variable. Do not list
+ordinary oracle implementation details as missing context unless the vulnerability itself is
+about oracle manipulation or stale prices.
+
 Return strict JSON matching FormalSpec:
 {{
   "target_contract": "...",

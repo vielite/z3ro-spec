@@ -71,6 +71,24 @@ class EtherscanClient:
         self._log(f"Etherscan source ready for {normalized} ({len(bundle.source_code)} bytes)")
         return bundle
 
+    def eth_call(self, address: str, data: str) -> str:
+        normalized = address.lower()
+        payload = self._request(
+            {
+                "chainid": self.chain_id,
+                "module": "proxy",
+                "action": "eth_call",
+                "to": normalized,
+                "data": data,
+                "tag": "latest",
+                "apikey": self.api_key,
+            }
+        )
+        result = payload.get("result")
+        if not isinstance(result, str) or not result.startswith("0x"):
+            raise EtherscanError(f"Etherscan returned malformed eth_call result for {address}")
+        return result
+
     def _get_source_metadata(self, address: str) -> dict[str, Any]:
         payload = self._request(
             {
@@ -95,7 +113,7 @@ class EtherscanClient:
         response: httpx.Response | None = None
         last_error: Exception | None = None
         action = str(params.get("action") or "request")
-        address = str(params.get("address") or "")
+        address = str(params.get("address") or params.get("to") or "")
         for attempt in range(1, self.max_retries + 2):
             started = time.perf_counter()
             try:
@@ -112,7 +130,19 @@ class EtherscanClient:
                     f"Etherscan response action={action} address={address} "
                     f"elapsed={elapsed:.1f}s"
                 )
-                break
+                payload = response.json()
+                if self._is_rate_limited(payload) and attempt <= self.max_retries:
+                    self._log(
+                        f"Etherscan rate limited action={action} address={address}; "
+                        "backing off before retry"
+                    )
+                    time.sleep(1.1 * attempt)
+                    continue
+                if payload.get("status") == "0" and "NOTOK" in str(
+                    payload.get("message", "")
+                ):
+                    raise EtherscanError(str(payload.get("result") or payload.get("message")))
+                return payload
             except (httpx.TimeoutException, httpx.NetworkError, httpx.HTTPStatusError) as exc:
                 last_error = exc
                 elapsed = time.perf_counter() - started
@@ -127,10 +157,12 @@ class EtherscanClient:
                     ) from exc
         if response is None:
             raise EtherscanError(f"Etherscan request failed: {last_error}")
-        payload = response.json()
-        if payload.get("status") == "0" and "NOTOK" in str(payload.get("message", "")):
-            raise EtherscanError(str(payload.get("result") or payload.get("message")))
-        return payload
+        raise EtherscanError(str(last_error or "Etherscan request failed"))
+
+    @staticmethod
+    def _is_rate_limited(payload: dict[str, Any]) -> bool:
+        message = f"{payload.get('message', '')} {payload.get('result', '')}".lower()
+        return "rate limit" in message or "max calls per sec" in message
 
     def _bundle_from_metadata(
         self,

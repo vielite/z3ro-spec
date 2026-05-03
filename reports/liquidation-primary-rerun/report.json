@@ -1,0 +1,1287 @@
+{
+  "prioritization_summary": {
+    "total_input_candidates": 10,
+    "excluded_due_to_missing_invalid_zero_or_low_value": 0,
+    "remaining_after_value_filter": 10,
+    "excluded_by_deterministic_filters": 0,
+    "excluded_by_llm_triage": 0,
+    "not_evaluated_after_top_candidates_selected": 5,
+    "selected_for_formal_verification": 5,
+    "top_candidates_requested": 5,
+    "min_value": 0.0,
+    "llm_triage_skipped": 1
+  },
+  "excluded_candidates": [
+    {
+      "finding": {
+        "contract": "0xe4d47ef77ac2c3fa4019cd169ac1dd9e27cb12e4",
+        "contract_name": "Market",
+        "sol_function": "function liquidate(address user, uint repaidDebt) public {\n        require(repaidDebt > 0, \"Must repay positive debt\");\n        uint debt = debts[user];\n        require(getCreditLimitInternal(user) < debt, \"User debt is healthy\");\n        require(repaidDebt <= debt * liquidationFactorBps / 10000, \"Exceeded liquidation factor\");\n        uint price = oracle.getPrice(address(collateral), collateralFactorBps);\n        uint liquidatorReward = repaidDebt * 1 ether / price;\n        liquidatorReward += liquidatorReward * liquidationIncentiveBps / 10000;\n        debts[user] -= repaidDebt;\n        totalDebt -= repaidDebt;\n        dbr.onRepay(user, repaidDebt);\n        if(address(borrowController) != address(0)){\n            borrowController.onRepay(repaidDebt);\n        }\n        dola.transferFrom(msg.sender, address(this), repaidDebt);\n        IEscrow escrow = predictEscrow(user);\n        escrow.pay(msg.sender, liquidatorReward);\n        if(liquidationFeeBps > 0) {\n            uint liquidationFee = repaidDebt * 1 ether / price * liquidationFeeBps / 10000;\n            uint balance = escrow.balance();\n            if(balance >= liquidationFee) {\n                escrow.pay(gov, liquidationFee);\n            } else if(balance > 0) {\n                escrow.pay(gov, balance);\n            }\n        }\n        emit Liquidate(user, msg.sender, repaidDebt, liquidatorReward);\n    }",
+        "sol_function_source_lines": [
+          653,
+          680
+        ],
+        "value": 674314.8004320001,
+        "normalized_value": 674314.8004320001,
+        "value_status": "valid",
+        "extra": {}
+      },
+      "normalized_value": 674314.8004320001,
+      "deterministic_keep": false,
+      "deterministic_reason": "not_run_top_candidates_already_selected",
+      "triage_keep": null,
+      "triage_confidence": null,
+      "triage_reason": null,
+      "selected_for_verification": false,
+      "exclusion_reason": "not_evaluated_after_top_candidates_selected",
+      "rank": null
+    },
+    {
+      "finding": {
+        "contract": "0xdc2265cbd15bed67b5f2c0b82e23fce4a07ddf6b",
+        "contract_name": "Market",
+        "sol_function": "function liquidate(address user, uint repaidDebt) public {\n        require(repaidDebt > 0, \"Must repay positive debt\");\n        uint debt = debts[user];\n        require(getCreditLimitInternal(user) < debt, \"User debt is healthy\");\n        require(repaidDebt <= debt * liquidationFactorBps / 10000, \"Exceeded liquidation factor\");\n        uint price = oracle.getPrice(address(collateral), collateralFactorBps);\n        uint liquidatorReward = repaidDebt * 1 ether / price;\n        liquidatorReward += liquidatorReward * liquidationIncentiveBps / 10000;\n        debts[user] -= repaidDebt;\n        totalDebt -= repaidDebt;\n        dbr.onRepay(user, repaidDebt);\n        if(address(borrowController) != address(0)){\n            borrowController.onRepay(repaidDebt);\n        }\n        dola.transferFrom(msg.sender, address(this), repaidDebt);\n        IEscrow escrow = predictEscrow(user);\n        escrow.pay(msg.sender, liquidatorReward);\n        if(liquidationFeeBps > 0) {\n            uint liquidationFee = repaidDebt * 1 ether / price * liquidationFeeBps / 10000;\n            uint balance = escrow.balance();\n            if(balance >= liquidationFee) {\n                escrow.pay(gov, liquidationFee);\n            } else if(balance > 0) {\n                escrow.pay(gov, balance);\n            }\n        }\n        emit Liquidate(user, msg.sender, repaidDebt, liquidatorReward);\n    }",
+        "sol_function_source_lines": [
+          658,
+          685
+        ],
+        "value": 414000.2793634608,
+        "normalized_value": 414000.2793634608,
+        "value_status": "valid",
+        "extra": {}
+      },
+      "normalized_value": 414000.2793634608,
+      "deterministic_keep": false,
+      "deterministic_reason": "not_run_top_candidates_already_selected",
+      "triage_keep": null,
+      "triage_confidence": null,
+      "triage_reason": null,
+      "selected_for_verification": false,
+      "exclusion_reason": "not_evaluated_after_top_candidates_selected",
+      "rank": null
+    },
+    {
+      "finding": {
+        "contract": "0xb427fc22561f3963b04202f9bb5bcebd76c14a99",
+        "contract_name": "Market",
+        "sol_function": "function liquidate(address user, uint repaidDebt) public {\n        require(repaidDebt > 0, \"Must repay positive debt\");\n        uint debt = debts[user];\n        require(getCreditLimitInternal(user) < debt, \"User debt is healthy\");\n        require(repaidDebt <= debt * liquidationFactorBps / 10000, \"Exceeded liquidation factor\");\n        uint price = oracle.getPrice(address(collateral), collateralFactorBps);\n        uint liquidatorReward = repaidDebt * 1 ether / price;\n        liquidatorReward += liquidatorReward * liquidationIncentiveBps / 10000;\n        debts[user] -= repaidDebt;\n        totalDebt -= repaidDebt;\n        dbr.onRepay(user, repaidDebt);\n        if(address(borrowController) != address(0)){\n            borrowController.onRepay(repaidDebt);\n        }\n        dola.transferFrom(msg.sender, address(this), repaidDebt);\n        IEscrow escrow = predictEscrow(user);\n        escrow.pay(msg.sender, liquidatorReward);\n        if(liquidationFeeBps > 0) {\n            uint liquidationFee = repaidDebt * 1 ether / price * liquidationFeeBps / 10000;\n            uint balance = escrow.balance();\n            if(balance >= liquidationFee) {\n                escrow.pay(gov, liquidationFee);\n            } else if(balance > 0) {\n                escrow.pay(gov, balance);\n            }\n        }\n        emit Liquidate(user, msg.sender, repaidDebt, liquidatorReward);\n    }",
+        "sol_function_source_lines": [
+          653,
+          680
+        ],
+        "value": 7204.600379733712,
+        "normalized_value": 7204.600379733712,
+        "value_status": "valid",
+        "extra": {}
+      },
+      "normalized_value": 7204.600379733712,
+      "deterministic_keep": false,
+      "deterministic_reason": "not_run_top_candidates_already_selected",
+      "triage_keep": null,
+      "triage_confidence": null,
+      "triage_reason": null,
+      "selected_for_verification": false,
+      "exclusion_reason": "not_evaluated_after_top_candidates_selected",
+      "rank": null
+    },
+    {
+      "finding": {
+        "contract": "0xb8bc1e9c0a2d445bc39d2a745f47619e954dd565",
+        "contract_name": "Market",
+        "sol_function": "function liquidate(address user, uint repaidDebt) public {\n        require(repaidDebt > 0, \"Must repay positive debt\");\n        uint debt = debts[user];\n        require(getCreditLimitInternal(user) < debt, \"User debt is healthy\");\n        require(repaidDebt <= debt * liquidationFactorBps / 10000, \"Exceeded liquidation factor\");\n        uint price = oracle.getPrice(address(collateral), collateralFactorBps);\n        uint liquidatorReward = repaidDebt * 1 ether / price;\n        liquidatorReward += liquidatorReward * liquidationIncentiveBps / 10000;\n        debts[user] -= repaidDebt;\n        totalDebt -= repaidDebt;\n        dbr.onRepay(user, repaidDebt);\n        if(address(borrowController) != address(0)){\n            borrowController.onRepay(repaidDebt);\n        }\n        dola.transferFrom(msg.sender, address(this), repaidDebt);\n        IEscrow escrow = predictEscrow(user);\n        escrow.pay(msg.sender, liquidatorReward);\n        if(liquidationFeeBps > 0) {\n            uint liquidationFee = repaidDebt * 1 ether / price * liquidationFeeBps / 10000;\n            uint balance = escrow.balance();\n            if(balance >= liquidationFee) {\n                escrow.pay(gov, liquidationFee);\n            } else if(balance > 0) {\n                escrow.pay(gov, balance);\n            }\n        }\n        emit Liquidate(user, msg.sender, repaidDebt, liquidatorReward);\n    }",
+        "sol_function_source_lines": [
+          653,
+          680
+        ],
+        "value": 5877.834750506076,
+        "normalized_value": 5877.834750506076,
+        "value_status": "valid",
+        "extra": {}
+      },
+      "normalized_value": 5877.834750506076,
+      "deterministic_keep": false,
+      "deterministic_reason": "not_run_top_candidates_already_selected",
+      "triage_keep": null,
+      "triage_confidence": null,
+      "triage_reason": null,
+      "selected_for_verification": false,
+      "exclusion_reason": "not_evaluated_after_top_candidates_selected",
+      "rank": null
+    },
+    {
+      "finding": {
+        "contract": "0xb516247596ca36bf32876199fbdcad6b3322330b",
+        "contract_name": "Market",
+        "sol_function": "function liquidate(address user, uint repaidDebt) public {\n        require(repaidDebt > 0, \"Must repay positive debt\");\n        uint debt = debts[user];\n        require(getCreditLimitInternal(user) < debt, \"User debt is healthy\");\n        require(repaidDebt <= debt * liquidationFactorBps / 10000, \"Exceeded liquidation factor\");\n        uint price = oracle.getPrice(address(collateral), collateralFactorBps);\n        uint liquidatorReward = repaidDebt * 1 ether / price;\n        liquidatorReward += liquidatorReward * liquidationIncentiveBps / 10000;\n        debts[user] -= repaidDebt;\n        totalDebt -= repaidDebt;\n        dbr.onRepay(user, repaidDebt);\n        if(address(borrowController) != address(0)){\n            borrowController.onRepay(repaidDebt);\n        }\n        dola.transferFrom(msg.sender, address(this), repaidDebt);\n        IEscrow escrow = predictEscrow(user);\n        escrow.pay(msg.sender, liquidatorReward);\n        if(liquidationFeeBps > 0) {\n            uint liquidationFee = repaidDebt * 1 ether / price * liquidationFeeBps / 10000;\n            uint balance = escrow.balance();\n            if(balance >= liquidationFee) {\n                escrow.pay(gov, liquidationFee);\n            } else if(balance > 0) {\n                escrow.pay(gov, balance);\n            }\n        }\n        emit Liquidate(user, msg.sender, repaidDebt, liquidatorReward);\n    }",
+        "sol_function_source_lines": [
+          658,
+          685
+        ],
+        "value": 4035.8135384549373,
+        "normalized_value": 4035.8135384549373,
+        "value_status": "valid",
+        "extra": {}
+      },
+      "normalized_value": 4035.8135384549373,
+      "deterministic_keep": false,
+      "deterministic_reason": "not_run_top_candidates_already_selected",
+      "triage_keep": null,
+      "triage_confidence": null,
+      "triage_reason": null,
+      "selected_for_verification": false,
+      "exclusion_reason": "not_evaluated_after_top_candidates_selected",
+      "rank": null
+    }
+  ],
+  "selected_candidates": [
+    {
+      "finding": {
+        "contract": "0x4e264618dc015219cd83dbc53b31251d73c2db1a",
+        "contract_name": "Market",
+        "sol_function": "function liquidate(address user, uint repaidDebt) public {\n        require(repaidDebt > 0, \"Must repay positive debt\");\n        uint debt = debts[user];\n        require(getCreditLimitInternal(user) < debt, \"User debt is healthy\");\n        require(repaidDebt <= debt * liquidationFactorBps / 10000, \"Exceeded liquidation factor\");\n        uint price = oracle.getPrice(address(collateral), collateralFactorBps);\n        uint liquidatorReward = repaidDebt * 1 ether / price;\n        liquidatorReward += liquidatorReward * liquidationIncentiveBps / 10000;\n        debts[user] -= repaidDebt;\n        totalDebt -= repaidDebt;\n        dbr.onRepay(user, repaidDebt);\n        if(address(borrowController) != address(0)){\n            borrowController.onRepay(repaidDebt);\n        }\n        dola.transferFrom(msg.sender, address(this), repaidDebt);\n        IEscrow escrow = predictEscrow(user);\n        escrow.pay(msg.sender, liquidatorReward);\n        if(liquidationFeeBps > 0) {\n            uint liquidationFee = repaidDebt * 1 ether / price * liquidationFeeBps / 10000;\n            uint balance = escrow.balance();\n            if(balance >= liquidationFee) {\n                escrow.pay(gov, liquidationFee);\n            } else if(balance > 0) {\n                escrow.pay(gov, balance);\n            }\n        }\n        emit Liquidate(user, msg.sender, repaidDebt, liquidatorReward);\n    }",
+        "sol_function_source_lines": [
+          653,
+          680
+        ],
+        "value": 2285980.895498516,
+        "normalized_value": 2285980.895498516,
+        "value_status": "valid",
+        "extra": {}
+      },
+      "normalized_value": 2285980.895498516,
+      "deterministic_keep": true,
+      "deterministic_reason": "deterministic filters passed",
+      "triage_keep": true,
+      "triage_confidence": "high",
+      "triage_reason": "LLM triage skipped; deterministic filters passed",
+      "selected_for_verification": true,
+      "exclusion_reason": null,
+      "rank": 1
+    },
+    {
+      "finding": {
+        "contract": "0xd68d3a44d46dd50bfeba8cca544717b76e7c4b29",
+        "contract_name": "Market",
+        "sol_function": "function liquidate(address user, uint repaidDebt) public {\n        require(repaidDebt > 0, \"Must repay positive debt\");\n        uint debt = debts[user];\n        require(getCreditLimitInternal(user) < debt, \"User debt is healthy\");\n        require(repaidDebt <= debt * liquidationFactorBps / 10000, \"Exceeded liquidation factor\");\n        uint price = oracle.getPrice(address(collateral), collateralFactorBps);\n        uint liquidatorReward = repaidDebt * 1 ether / price;\n        liquidatorReward += liquidatorReward * liquidationIncentiveBps / 10000;\n        debts[user] -= repaidDebt;\n        totalDebt -= repaidDebt;\n        dbr.onRepay(user, repaidDebt);\n        if(address(borrowController) != address(0)){\n            borrowController.onRepay(repaidDebt);\n        }\n        dola.transferFrom(msg.sender, address(this), repaidDebt);\n        IEscrow escrow = predictEscrow(user);\n        escrow.pay(msg.sender, liquidatorReward);\n        if(liquidationFeeBps > 0) {\n            uint liquidationFee = repaidDebt * 1 ether / price * liquidationFeeBps / 10000;\n            uint balance = escrow.balance();\n            if(balance >= liquidationFee) {\n                escrow.pay(gov, liquidationFee);\n            } else if(balance > 0) {\n                escrow.pay(gov, balance);\n            }\n        }\n        emit Liquidate(user, msg.sender, repaidDebt, liquidatorReward);\n    }",
+        "sol_function_source_lines": [
+          653,
+          680
+        ],
+        "value": 2114714.90508023,
+        "normalized_value": 2114714.90508023,
+        "value_status": "valid",
+        "extra": {}
+      },
+      "normalized_value": 2114714.90508023,
+      "deterministic_keep": true,
+      "deterministic_reason": "deterministic filters passed",
+      "triage_keep": true,
+      "triage_confidence": "high",
+      "triage_reason": "LLM triage skipped; deterministic filters passed",
+      "selected_for_verification": true,
+      "exclusion_reason": null,
+      "rank": 2
+    },
+    {
+      "finding": {
+        "contract": "0x63df5e23db45a2066508318f172ba45b9cd37035",
+        "contract_name": "Market",
+        "sol_function": "function liquidate(address user, uint repaidDebt) public {\r\n        require(repaidDebt > 0, \"Must repay positive debt\");\r\n        uint debt = debts[user];\r\n        require(getCreditLimitInternal(user) < debt, \"User debt is healthy\");\r\n        require(repaidDebt <= debt * liquidationFactorBps / 10000, \"Exceeded liquidation factor\");\r\n        uint price = oracle.getPrice(address(collateral), collateralFactorBps);\r\n        uint liquidatorReward = repaidDebt * 1 ether / price;\r\n        liquidatorReward += liquidatorReward * liquidationIncentiveBps / 10000;\r\n        debts[user] -= repaidDebt;\r\n        totalDebt -= repaidDebt;\r\n        dbr.onRepay(user, repaidDebt);\r\n        dola.transferFrom(msg.sender, address(this), repaidDebt);\r\n        IEscrow escrow = predictEscrow(user);\r\n        escrow.pay(msg.sender, liquidatorReward);\r\n        if(liquidationFeeBps > 0) {\r\n            uint liquidationFee = repaidDebt * 1 ether / price * liquidationFeeBps / 10000;\r\n            uint balance = escrow.balance();\r\n            if(balance >= liquidationFee) {\r\n                escrow.pay(gov, liquidationFee);\r\n            } else if(balance > 0) {\r\n                escrow.pay(gov, balance);\r\n            }\r\n        }\r\n        emit Liquidate(user, msg.sender, repaidDebt, liquidatorReward);\r\n    }",
+        "sol_function_source_lines": [
+          608,
+          632
+        ],
+        "value": 1955142.740541187,
+        "normalized_value": 1955142.740541187,
+        "value_status": "valid",
+        "extra": {}
+      },
+      "normalized_value": 1955142.740541187,
+      "deterministic_keep": true,
+      "deterministic_reason": "deterministic filters passed",
+      "triage_keep": true,
+      "triage_confidence": "high",
+      "triage_reason": "LLM triage skipped; deterministic filters passed",
+      "selected_for_verification": true,
+      "exclusion_reason": null,
+      "rank": 3
+    },
+    {
+      "finding": {
+        "contract": "0x48ba574edf0bc4e2e40b529863aaa6a67c264e7c",
+        "contract_name": "Market",
+        "sol_function": "function liquidate(address user, uint repaidDebt) public {\n        require(repaidDebt > 0, \"Must repay positive debt\");\n        uint debt = debts[user];\n        require(getCreditLimitInternal(user) < debt, \"User debt is healthy\");\n        require(repaidDebt <= debt * liquidationFactorBps / 10000, \"Exceeded liquidation factor\");\n        uint price = oracle.getPrice(address(collateral), collateralFactorBps);\n        uint liquidatorReward = repaidDebt * 1 ether / price;\n        liquidatorReward += liquidatorReward * liquidationIncentiveBps / 10000;\n        debts[user] -= repaidDebt;\n        totalDebt -= repaidDebt;\n        dbr.onRepay(user, repaidDebt);\n        if(address(borrowController) != address(0)){\n            borrowController.onRepay(repaidDebt);\n        }\n        dola.transferFrom(msg.sender, address(this), repaidDebt);\n        IEscrow escrow = predictEscrow(user);\n        escrow.pay(msg.sender, liquidatorReward);\n        if(liquidationFeeBps > 0) {\n            uint liquidationFee = repaidDebt * 1 ether / price * liquidationFeeBps / 10000;\n            uint balance = escrow.balance();\n            if(balance >= liquidationFee) {\n                escrow.pay(gov, liquidationFee);\n            } else if(balance > 0) {\n                escrow.pay(gov, balance);\n            }\n        }\n        emit Liquidate(user, msg.sender, repaidDebt, liquidatorReward);\n    }",
+        "sol_function_source_lines": [
+          671,
+          698
+        ],
+        "value": 1786388.3553120447,
+        "normalized_value": 1786388.3553120447,
+        "value_status": "valid",
+        "extra": {}
+      },
+      "normalized_value": 1786388.3553120447,
+      "deterministic_keep": true,
+      "deterministic_reason": "deterministic filters passed",
+      "triage_keep": true,
+      "triage_confidence": "high",
+      "triage_reason": "LLM triage skipped; deterministic filters passed",
+      "selected_for_verification": true,
+      "exclusion_reason": null,
+      "rank": 4
+    },
+    {
+      "finding": {
+        "contract": "0x3fd3dabb9f9480621c8a111603d3ba70f17550bc",
+        "contract_name": "Market",
+        "sol_function": "function liquidate(address user, uint repaidDebt) public {\n        require(repaidDebt > 0, \"Must repay positive debt\");\n        uint debt = debts[user];\n        require(getCreditLimitInternal(user) < debt, \"User debt is healthy\");\n        require(repaidDebt <= debt * liquidationFactorBps / 10000, \"Exceeded liquidation factor\");\n        uint price = oracle.getPrice(address(collateral), collateralFactorBps);\n        uint liquidatorReward = repaidDebt * 1 ether / price;\n        liquidatorReward += liquidatorReward * liquidationIncentiveBps / 10000;\n        debts[user] -= repaidDebt;\n        totalDebt -= repaidDebt;\n        dbr.onRepay(user, repaidDebt);\n        if(address(borrowController) != address(0)){\n            borrowController.onRepay(repaidDebt);\n        }\n        dola.transferFrom(msg.sender, address(this), repaidDebt);\n        IEscrow escrow = predictEscrow(user);\n        escrow.pay(msg.sender, liquidatorReward);\n        if(liquidationFeeBps > 0) {\n            uint liquidationFee = repaidDebt * 1 ether / price * liquidationFeeBps / 10000;\n            uint balance = escrow.balance();\n            if(balance >= liquidationFee) {\n                escrow.pay(gov, liquidationFee);\n            } else if(balance > 0) {\n                escrow.pay(gov, balance);\n            }\n        }\n        emit Liquidate(user, msg.sender, repaidDebt, liquidatorReward);\n    }",
+        "sol_function_source_lines": [
+          671,
+          698
+        ],
+        "value": 1337554.0350286516,
+        "normalized_value": 1337554.0350286516,
+        "value_status": "valid",
+        "extra": {}
+      },
+      "normalized_value": 1337554.0350286516,
+      "deterministic_keep": true,
+      "deterministic_reason": "deterministic filters passed",
+      "triage_keep": true,
+      "triage_confidence": "high",
+      "triage_reason": "LLM triage skipped; deterministic filters passed",
+      "selected_for_verification": true,
+      "exclusion_reason": null,
+      "rank": 5
+    }
+  ],
+  "findings": [
+    {
+      "contract_address": "0x4e264618dc015219cd83dbc53b31251d73c2db1a",
+      "contract_name": "Market",
+      "function_source_lines": [
+        653,
+        680
+      ],
+      "value": 2285980.895498516,
+      "vulnerability_description": "Partial liquidation must not create bad debt: collateralFactorBps * (10000 + liquidationIncentiveBps + liquidationFeeBps)\n  must be < 10000^2, gap_after must be < gap_before, and liquidation must not exhaust collateral while debt remains.",
+      "triage_result": {
+        "original": {
+          "contract": "0x4e264618dc015219cd83dbc53b31251d73c2db1a",
+          "contract_name": "Market",
+          "sol_function": "function liquidate(address user, uint repaidDebt) public {\n        require(repaidDebt > 0, \"Must repay positive debt\");\n        uint debt = debts[user];\n        require(getCreditLimitInternal(user) < debt, \"User debt is healthy\");\n        require(repaidDebt <= debt * liquidationFactorBps / 10000, \"Exceeded liquidation factor\");\n        uint price = oracle.getPrice(address(collateral), collateralFactorBps);\n        uint liquidatorReward = repaidDebt * 1 ether / price;\n        liquidatorReward += liquidatorReward * liquidationIncentiveBps / 10000;\n        debts[user] -= repaidDebt;\n        totalDebt -= repaidDebt;\n        dbr.onRepay(user, repaidDebt);\n        if(address(borrowController) != address(0)){\n            borrowController.onRepay(repaidDebt);\n        }\n        dola.transferFrom(msg.sender, address(this), repaidDebt);\n        IEscrow escrow = predictEscrow(user);\n        escrow.pay(msg.sender, liquidatorReward);\n        if(liquidationFeeBps > 0) {\n            uint liquidationFee = repaidDebt * 1 ether / price * liquidationFeeBps / 10000;\n            uint balance = escrow.balance();\n            if(balance >= liquidationFee) {\n                escrow.pay(gov, liquidationFee);\n            } else if(balance > 0) {\n                escrow.pay(gov, balance);\n            }\n        }\n        emit Liquidate(user, msg.sender, repaidDebt, liquidatorReward);\n    }",
+          "sol_function_source_lines": [
+            653,
+            680
+          ],
+          "value": 2285980.895498516,
+          "normalized_value": 2285980.895498516,
+          "value_status": "valid",
+          "extra": {}
+        },
+        "keep": true,
+        "reason": "LLM triage skipped; deterministic filters passed",
+        "confidence": "high",
+        "fp_categories": [],
+        "vulnerability_relevance": "Candidate selected for formal verification without LLM triage."
+      },
+      "formal_spec": {
+        "target_contract": "Market",
+        "target_address": "0x4e264618dc015219cd83dbc53b31251d73c2db1a",
+        "target_function": "liquidate",
+        "vulnerability_description": "Partial liquidation must not create bad debt: collateralFactorBps * (10000 + liquidationIncentiveBps + liquidationFeeBps)\n  must be < 10000^2, gap_after must be < gap_before, and liquidation must not exhaust collateral while debt remains.",
+        "vulnerability_class": "generic_state_transition_safety",
+        "summary": "Fallback spec created because formal-verifier LLM output could not be validated.",
+        "variables": [
+          {
+            "name": "x",
+            "solidity_type": "uint256",
+            "symbolic_type": "uint",
+            "role": "unknown",
+            "description": "placeholder variable; replace with LLM or manual specification"
+          },
+          {
+            "name": "collateralFactorBps",
+            "solidity_type": "uint256",
+            "symbolic_type": "uint",
+            "role": "constant",
+            "description": "Resolved on-chain parameter from verified contract ABI."
+          },
+          {
+            "name": "liquidationFactorBps",
+            "solidity_type": "uint256",
+            "symbolic_type": "uint",
+            "role": "constant",
+            "description": "Resolved on-chain parameter from verified contract ABI."
+          },
+          {
+            "name": "liquidationFeeBps",
+            "solidity_type": "uint256",
+            "symbolic_type": "uint",
+            "role": "constant",
+            "description": "Resolved on-chain parameter from verified contract ABI."
+          },
+          {
+            "name": "liquidationIncentiveBps",
+            "solidity_type": "uint256",
+            "symbolic_type": "uint",
+            "role": "constant",
+            "description": "Resolved on-chain parameter from verified contract ABI."
+          }
+        ],
+        "callee_summaries": [
+          {
+            "name": "liquidate",
+            "purpose": "target function requiring manual modeling",
+            "formula": null,
+            "assumptions": []
+          }
+        ],
+        "preconditions": [
+          "collateralFactorBps == 9200",
+          "liquidationFactorBps == 10000",
+          "liquidationFeeBps == 0",
+          "liquidationIncentiveBps == 400"
+        ],
+        "state_transitions": [],
+        "safety_properties": [],
+        "violation_conditions": [],
+        "z3_encoding_notes": [
+          "formal-verifier LLM output could not be validated; manual specification may be required."
+        ],
+        "unsupported_features": [],
+        "missing_context": [
+          "formal verifier LLM output",
+          "formal verifier LLM failed: LLM request failed for model z-ai/glm-5.1 after 3 attempt(s): The read operation timed out"
+        ],
+        "confidence": "low"
+      },
+      "verification": {
+        "status": "model_incomplete",
+        "solver_status": "not_run",
+        "counterexample": null,
+        "explanation": "Spec has no violation conditions to assert.",
+        "warnings": [
+          "missing violation_conditions"
+        ]
+      },
+      "onchain_parameters": {
+        "collateralFactorBps": 9200,
+        "liquidationFactorBps": 10000,
+        "liquidationFeeBps": 0,
+        "liquidationIncentiveBps": 400
+      },
+      "limitations": [
+        "Z3 checks only the encoded formal model, not full Solidity or EVM semantics.",
+        "sat means possible_bug, never verified_bug.",
+        "Heuristic source slicing may miss relevant context until Slither integration is added."
+      ],
+      "recommended_manual_review_steps": [
+        "Review missing_context and unsupported_features before trusting solver output.",
+        "Compare each formula against Solidity source and protocol documentation.",
+        "Manually validate any counterexample against real units, rounding, and access control."
+      ]
+    },
+    {
+      "contract_address": "0xd68d3a44d46dd50bfeba8cca544717b76e7c4b29",
+      "contract_name": "Market",
+      "function_source_lines": [
+        653,
+        680
+      ],
+      "value": 2114714.90508023,
+      "vulnerability_description": "Partial liquidation must not create bad debt: collateralFactorBps * (10000 + liquidationIncentiveBps + liquidationFeeBps)\n  must be < 10000^2, gap_after must be < gap_before, and liquidation must not exhaust collateral while debt remains.",
+      "triage_result": {
+        "original": {
+          "contract": "0xd68d3a44d46dd50bfeba8cca544717b76e7c4b29",
+          "contract_name": "Market",
+          "sol_function": "function liquidate(address user, uint repaidDebt) public {\n        require(repaidDebt > 0, \"Must repay positive debt\");\n        uint debt = debts[user];\n        require(getCreditLimitInternal(user) < debt, \"User debt is healthy\");\n        require(repaidDebt <= debt * liquidationFactorBps / 10000, \"Exceeded liquidation factor\");\n        uint price = oracle.getPrice(address(collateral), collateralFactorBps);\n        uint liquidatorReward = repaidDebt * 1 ether / price;\n        liquidatorReward += liquidatorReward * liquidationIncentiveBps / 10000;\n        debts[user] -= repaidDebt;\n        totalDebt -= repaidDebt;\n        dbr.onRepay(user, repaidDebt);\n        if(address(borrowController) != address(0)){\n            borrowController.onRepay(repaidDebt);\n        }\n        dola.transferFrom(msg.sender, address(this), repaidDebt);\n        IEscrow escrow = predictEscrow(user);\n        escrow.pay(msg.sender, liquidatorReward);\n        if(liquidationFeeBps > 0) {\n            uint liquidationFee = repaidDebt * 1 ether / price * liquidationFeeBps / 10000;\n            uint balance = escrow.balance();\n            if(balance >= liquidationFee) {\n                escrow.pay(gov, liquidationFee);\n            } else if(balance > 0) {\n                escrow.pay(gov, balance);\n            }\n        }\n        emit Liquidate(user, msg.sender, repaidDebt, liquidatorReward);\n    }",
+          "sol_function_source_lines": [
+            653,
+            680
+          ],
+          "value": 2114714.90508023,
+          "normalized_value": 2114714.90508023,
+          "value_status": "valid",
+          "extra": {}
+        },
+        "keep": true,
+        "reason": "LLM triage skipped; deterministic filters passed",
+        "confidence": "high",
+        "fp_categories": [],
+        "vulnerability_relevance": "Candidate selected for formal verification without LLM triage."
+      },
+      "formal_spec": {
+        "target_contract": "Market",
+        "target_address": "0xd68d3a44d46dd50bfeba8cca544717b76e7c4b29",
+        "target_function": "liquidate",
+        "vulnerability_description": "Partial liquidation must not create bad debt: collateralFactorBps * (10000 + liquidationIncentiveBps + liquidationFeeBps) must be < 10000^2, gap_after must be < gap_before, and liquidation must not exhaust collateral while debt remains.",
+        "vulnerability_class": "Bad Debt Creation via Partial Liquidation",
+        "summary": "The liquidation function can create bad debt if the combination of collateralFactorBps, liquidationIncentiveBps, and liquidationFeeBps is too high, allowing a partial liquidation to remove more collateral value than the debt repaid, worsening the user's health factor. With on-chain parameters collateralFactorBps=9000, liquidationIncentiveBps>0, and liquidationFeeBps=0, the invariant collateralFactorBps * (10000 + liquidationIncentiveBps + liquidationFeeBps) < 10000^2 is violated, meaning partial liquidations increase the debt-to-collateral ratio.",
+        "variables": [
+          {
+            "name": "debt_before",
+            "solidity_type": "uint256",
+            "symbolic_type": "uint",
+            "role": "state",
+            "description": "User's debt before liquidation"
+          },
+          {
+            "name": "debt_after",
+            "solidity_type": "uint256",
+            "symbolic_type": "uint",
+            "role": "derived",
+            "description": "User's debt after liquidation: debt_before - repaidDebt"
+          },
+          {
+            "name": "collateralBalance_before",
+            "solidity_type": "uint256",
+            "symbolic_type": "uint",
+            "role": "state",
+            "description": "User's escrow collateral balance before liquidation"
+          },
+          {
+            "name": "collateralBalance_after",
+            "solidity_type": "uint256",
+            "symbolic_type": "uint",
+            "role": "derived",
+            "description": "User's escrow collateral balance after liquidation"
+          },
+          {
+            "name": "repaidDebt",
+            "solidity_type": "uint256",
+            "symbolic_type": "uint",
+            "role": "argument",
+            "description": "Amount of debt being repaid by liquidator"
+          },
+          {
+            "name": "price",
+            "solidity_type": "uint256",
+            "symbolic_type": "uint",
+            "role": "unknown",
+            "description": "Price of collateral from oracle (scaled by 1 ether)"
+          },
+          {
+            "name": "collateralFactorBps",
+            "solidity_type": "uint256",
+            "symbolic_type": "uint",
+            "role": "constant",
+            "description": "Collateral factor in basis points (on-chain: 9000)"
+          },
+          {
+            "name": "liquidationIncentiveBps",
+            "solidity_type": "uint256",
+            "symbolic_type": "uint",
+            "role": "constant",
+            "description": "Liquidator incentive in basis points"
+          },
+          {
+            "name": "liquidationFeeBps",
+            "solidity_type": "uint256",
+            "symbolic_type": "uint",
+            "role": "constant",
+            "description": "Governance liquidation fee in basis points (on-chain: 0)"
+          },
+          {
+            "name": "liquidationFactorBps",
+            "solidity_type": "uint256",
+            "symbolic_type": "uint",
+            "role": "constant",
+            "description": "Max fraction of debt that can be liquidated in basis points (on-chain: 10000)"
+          },
+          {
+            "name": "liquidatorReward",
+            "solidity_type": "uint256",
+            "symbolic_type": "uint",
+            "role": "derived",
+            "description": "Collateral tokens paid to liquidator: floor_div(repaidDebt * 1000000000000000000, price) * (10000 + liquidationIncentiveBps) / 10000"
+          },
+          {
+            "name": "liquidationFee",
+            "solidity_type": "uint256",
+            "symbolic_type": "uint",
+            "role": "derived",
+            "description": "Collateral tokens paid to governance: min(floor_div(repaidDebt * 1000000000000000000, price) * liquidationFeeBps / 10000, collateralBalance_after_liquidator)"
+          },
+          {
+            "name": "creditLimit_before",
+            "solidity_type": "uint256",
+            "symbolic_type": "uint",
+            "role": "derived",
+            "description": "User's credit limit before liquidation: floor_div(collateralBalance_before * price, 1000000000000000000) * collateralFactorBps / 10000"
+          },
+          {
+            "name": "creditLimit_after",
+            "solidity_type": "uint256",
+            "symbolic_type": "uint",
+            "role": "derived",
+            "description": "User's credit limit after liquidation: floor_div(collateralBalance_after * price, 1000000000000000000) * collateralFactorBps / 10000"
+          },
+          {
+            "name": "gap_before",
+            "solidity_type": "uint256",
+            "symbolic_type": "uint",
+            "role": "derived",
+            "description": "Difference between debt and credit limit before liquidation: debt_before - creditLimit_before"
+          },
+          {
+            "name": "gap_after",
+            "solidity_type": "uint256",
+            "symbolic_type": "uint",
+            "role": "derived",
+            "description": "Difference between debt and credit limit after liquidation: debt_after - creditLimit_after"
+          }
+        ],
+        "callee_summaries": [
+          {
+            "name": "oracle.getPrice",
+            "purpose": "Get pessimistic price of collateral",
+            "formula": null,
+            "assumptions": [
+              "price > 0"
+            ]
+          },
+          {
+            "name": "escrow.pay",
+            "purpose": "Transfer collateral from user's escrow",
+            "formula": null,
+            "assumptions": [
+              "escrow.balance() >= amount",
+              "Reduces escrow balance by amount"
+            ]
+          },
+          {
+            "name": "escrow.balance",
+            "purpose": "Get user's escrow collateral balance",
+            "formula": null,
+            "assumptions": []
+          }
+        ],
+        "preconditions": [
+          "repaidDebt > 0",
+          "creditLimit_before < debt_before",
+          "repaidDebt <= floor_div(debt_before * liquidationFactorBps, 10000)",
+          "collateralBalance_before >= liquidatorReward",
+          "collateralFactorBps == 9000",
+          "liquidationFactorBps == 10000",
+          "liquidationFeeBps == 0",
+          "liquidationIncentiveBps > 0",
+          "debt_before > 0",
+          "price > 0"
+        ],
+        "state_transitions": [
+          "debt_after = debt_before - repaidDebt",
+          "liquidatorReward = floor_div(repaidDebt * 1000000000000000000, price) * (10000 + liquidationIncentiveBps) / 10000",
+          "collateralBalance_after_liquidator = collateralBalance_before - liquidatorReward",
+          "liquidationFee = min(floor_div(repaidDebt * 1000000000000000000, price) * liquidationFeeBps / 10000, collateralBalance_after_liquidator)",
+          "collateralBalance_after = collateralBalance_after_liquidator - liquidationFee",
+          "creditLimit_before = floor_div(collateralBalance_before * price, 1000000000000000000) * collateralFactorBps / 10000",
+          "creditLimit_after = floor_div(collateralBalance_after * price, 1000000000000000000) * collateralFactorBps / 10000",
+          "gap_before = debt_before - creditLimit_before",
+          "gap_after = debt_after - creditLimit_after"
+        ],
+        "safety_properties": [
+          "collateralFactorBps * (10000 + liquidationIncentiveBps + liquidationFeeBps) < 10000 * 10000",
+          "gap_after < gap_before",
+          "not (debt_after > 0 and collateralBalance_after == 0)",
+          "creditLimit_after >= debt_after"
+        ],
+        "violation_conditions": [
+          "collateralFactorBps * (10000 + liquidationIncentiveBps + liquidationFeeBps) >= 10000 * 10000",
+          "gap_after >= gap_before",
+          "debt_after > 0 and collateralBalance_after == 0",
+          "debt_after > creditLimit_after"
+        ],
+        "z3_encoding_notes": [
+          "Use floor_div for Solidity integer division which truncates toward zero",
+          "All values are unsigned integers; ensure no underflow in subtractions by adding appropriate constraints (e.g., debt_before >= repaidDebt)",
+          "The scaled price (1 ether = 10^18) is represented as 1000000000000000000 in formulas",
+          "With collateralFactorBps=9000 and liquidationIncentiveBps>0, the invariant collateralFactorBps * (10000 + liquidationIncentiveBps + liquidationFeeBps) < 10000^2 is violated since 9000 * (10000 + liquidationIncentiveBps) >= 90000000 > 100000000 is false for small incentive, but 9000 * 10001 = 90009000 < 100000000, so check exact on-chain liquidationIncentiveBps value",
+          "The gap_after >= gap_before condition is the key violation: partial liquidation should improve the user's health factor, not worsen it",
+          "Ignoring rounding effects from integer division may slightly affect the gap comparison; the core invariant violation is structural"
+        ],
+        "unsupported_features": [
+          "External calls to oracle, escrow, dbr, borrowController, and dola are abstracted; their side effects are assumed to follow the summaries",
+          "Reentrancy via external calls is not modeled",
+          "DBR deficit mechanics and their effect on debt accrual are not modeled"
+        ],
+        "missing_context": [
+          "Exact on-chain value of liquidationIncentiveBps is not provided in the resolved parameters, only that it is > 0",
+          "Implementation of escrow.pay and whether it reverts on insufficient balance",
+          "Oracle price feed implementation and potential manipulation vectors"
+        ],
+        "confidence": "high"
+      },
+      "verification": {
+        "status": "possible_bug",
+        "solver_status": "sat",
+        "counterexample": {
+          "debt_before": 2,
+          "debt_after": 1,
+          "collateralBalance_before": 1000100000000000000,
+          "collateralBalance_after": 0,
+          "repaidDebt": 1,
+          "price": 1,
+          "collateralFactorBps": 9000,
+          "liquidationIncentiveBps": 1,
+          "liquidationFeeBps": 0,
+          "liquidationFactorBps": 10000,
+          "liquidatorReward": 1000100000000000000,
+          "liquidationFee": 0,
+          "creditLimit_before": 0,
+          "creditLimit_after": 0,
+          "gap_before": 2,
+          "gap_after": 1,
+          "collateralBalance_after_liquidator": 0
+        },
+        "explanation": "Z3 found a satisfying assignment for at least one violation condition.",
+        "warnings": [
+          "External calls to oracle, escrow, dbr, borrowController, and dola are abstracted; their side effects are assumed to follow the summaries",
+          "Reentrancy via external calls is not modeled",
+          "DBR deficit mechanics and their effect on debt accrual are not modeled",
+          "Exact on-chain value of liquidationIncentiveBps is not provided in the resolved parameters, only that it is > 0",
+          "Implementation of escrow.pay and whether it reverts on insufficient balance",
+          "Oracle price feed implementation and potential manipulation vectors"
+        ]
+      },
+      "onchain_parameters": {
+        "collateralFactorBps": 9000,
+        "liquidationFactorBps": 10000,
+        "liquidationFeeBps": 0
+      },
+      "limitations": [
+        "Z3 checks only the encoded formal model, not full Solidity or EVM semantics.",
+        "sat means possible_bug, never verified_bug.",
+        "Heuristic source slicing may miss relevant context until Slither integration is added."
+      ],
+      "recommended_manual_review_steps": [
+        "Review missing_context and unsupported_features before trusting solver output.",
+        "Compare each formula against Solidity source and protocol documentation.",
+        "Manually validate any counterexample against real units, rounding, and access control."
+      ]
+    },
+    {
+      "contract_address": "0x63df5e23db45a2066508318f172ba45b9cd37035",
+      "contract_name": "Market",
+      "function_source_lines": [
+        608,
+        632
+      ],
+      "value": 1955142.740541187,
+      "vulnerability_description": "Partial liquidation must not create bad debt: collateralFactorBps * (10000 + liquidationIncentiveBps + liquidationFeeBps)\n  must be < 10000^2, gap_after must be < gap_before, and liquidation must not exhaust collateral while debt remains.",
+      "triage_result": {
+        "original": {
+          "contract": "0x63df5e23db45a2066508318f172ba45b9cd37035",
+          "contract_name": "Market",
+          "sol_function": "function liquidate(address user, uint repaidDebt) public {\r\n        require(repaidDebt > 0, \"Must repay positive debt\");\r\n        uint debt = debts[user];\r\n        require(getCreditLimitInternal(user) < debt, \"User debt is healthy\");\r\n        require(repaidDebt <= debt * liquidationFactorBps / 10000, \"Exceeded liquidation factor\");\r\n        uint price = oracle.getPrice(address(collateral), collateralFactorBps);\r\n        uint liquidatorReward = repaidDebt * 1 ether / price;\r\n        liquidatorReward += liquidatorReward * liquidationIncentiveBps / 10000;\r\n        debts[user] -= repaidDebt;\r\n        totalDebt -= repaidDebt;\r\n        dbr.onRepay(user, repaidDebt);\r\n        dola.transferFrom(msg.sender, address(this), repaidDebt);\r\n        IEscrow escrow = predictEscrow(user);\r\n        escrow.pay(msg.sender, liquidatorReward);\r\n        if(liquidationFeeBps > 0) {\r\n            uint liquidationFee = repaidDebt * 1 ether / price * liquidationFeeBps / 10000;\r\n            uint balance = escrow.balance();\r\n            if(balance >= liquidationFee) {\r\n                escrow.pay(gov, liquidationFee);\r\n            } else if(balance > 0) {\r\n                escrow.pay(gov, balance);\r\n            }\r\n        }\r\n        emit Liquidate(user, msg.sender, repaidDebt, liquidatorReward);\r\n    }",
+          "sol_function_source_lines": [
+            608,
+            632
+          ],
+          "value": 1955142.740541187,
+          "normalized_value": 1955142.740541187,
+          "value_status": "valid",
+          "extra": {}
+        },
+        "keep": true,
+        "reason": "LLM triage skipped; deterministic filters passed",
+        "confidence": "high",
+        "fp_categories": [],
+        "vulnerability_relevance": "Candidate selected for formal verification without LLM triage."
+      },
+      "formal_spec": {
+        "target_contract": "Market",
+        "target_address": "0x63df5e23db45a2066508318f172ba45b9cd37035",
+        "target_function": "liquidate",
+        "vulnerability_description": "Partial liquidation must not create bad debt: collateralFactorBps * (10000 + liquidationIncentiveBps + liquidationFeeBps)\n  must be < 10000^2, gap_after must be < gap_before, and liquidation must not exhaust collateral while debt remains.",
+        "vulnerability_class": "generic_state_transition_safety",
+        "summary": "Fallback spec created because formal-verifier LLM output could not be validated.",
+        "variables": [
+          {
+            "name": "x",
+            "solidity_type": "uint256",
+            "symbolic_type": "uint",
+            "role": "unknown",
+            "description": "placeholder variable; replace with LLM or manual specification"
+          },
+          {
+            "name": "collateralFactorBps",
+            "solidity_type": "uint256",
+            "symbolic_type": "uint",
+            "role": "constant",
+            "description": "Resolved on-chain parameter from verified contract ABI."
+          },
+          {
+            "name": "liquidationFactorBps",
+            "solidity_type": "uint256",
+            "symbolic_type": "uint",
+            "role": "constant",
+            "description": "Resolved on-chain parameter from verified contract ABI."
+          },
+          {
+            "name": "liquidationFeeBps",
+            "solidity_type": "uint256",
+            "symbolic_type": "uint",
+            "role": "constant",
+            "description": "Resolved on-chain parameter from verified contract ABI."
+          }
+        ],
+        "callee_summaries": [
+          {
+            "name": "liquidate",
+            "purpose": "target function requiring manual modeling",
+            "formula": null,
+            "assumptions": []
+          }
+        ],
+        "preconditions": [
+          "collateralFactorBps == 8500",
+          "liquidationFactorBps == 7500",
+          "liquidationFeeBps == 0"
+        ],
+        "state_transitions": [],
+        "safety_properties": [],
+        "violation_conditions": [],
+        "z3_encoding_notes": [
+          "formal-verifier LLM output could not be validated; manual specification may be required."
+        ],
+        "unsupported_features": [],
+        "missing_context": [
+          "formal verifier LLM output",
+          "formal verifier LLM failed: LLM request failed for model z-ai/glm-5.1 after 3 attempt(s): The read operation timed out"
+        ],
+        "confidence": "low"
+      },
+      "verification": {
+        "status": "model_incomplete",
+        "solver_status": "not_run",
+        "counterexample": null,
+        "explanation": "Spec has no violation conditions to assert.",
+        "warnings": [
+          "missing violation_conditions"
+        ]
+      },
+      "onchain_parameters": {
+        "collateralFactorBps": 8500,
+        "liquidationFactorBps": 7500,
+        "liquidationFeeBps": 0
+      },
+      "limitations": [
+        "Z3 checks only the encoded formal model, not full Solidity or EVM semantics.",
+        "sat means possible_bug, never verified_bug.",
+        "Heuristic source slicing may miss relevant context until Slither integration is added."
+      ],
+      "recommended_manual_review_steps": [
+        "Review missing_context and unsupported_features before trusting solver output.",
+        "Compare each formula against Solidity source and protocol documentation.",
+        "Manually validate any counterexample against real units, rounding, and access control."
+      ]
+    },
+    {
+      "contract_address": "0x48ba574edf0bc4e2e40b529863aaa6a67c264e7c",
+      "contract_name": "Market",
+      "function_source_lines": [
+        671,
+        698
+      ],
+      "value": 1786388.3553120447,
+      "vulnerability_description": "Partial liquidation must not create bad debt: collateralFactorBps * (10000 + liquidationIncentiveBps + liquidationFeeBps)\n  must be < 10000^2, gap_after must be < gap_before, and liquidation must not exhaust collateral while debt remains.",
+      "triage_result": {
+        "original": {
+          "contract": "0x48ba574edf0bc4e2e40b529863aaa6a67c264e7c",
+          "contract_name": "Market",
+          "sol_function": "function liquidate(address user, uint repaidDebt) public {\n        require(repaidDebt > 0, \"Must repay positive debt\");\n        uint debt = debts[user];\n        require(getCreditLimitInternal(user) < debt, \"User debt is healthy\");\n        require(repaidDebt <= debt * liquidationFactorBps / 10000, \"Exceeded liquidation factor\");\n        uint price = oracle.getPrice(address(collateral), collateralFactorBps);\n        uint liquidatorReward = repaidDebt * 1 ether / price;\n        liquidatorReward += liquidatorReward * liquidationIncentiveBps / 10000;\n        debts[user] -= repaidDebt;\n        totalDebt -= repaidDebt;\n        dbr.onRepay(user, repaidDebt);\n        if(address(borrowController) != address(0)){\n            borrowController.onRepay(repaidDebt);\n        }\n        dola.transferFrom(msg.sender, address(this), repaidDebt);\n        IEscrow escrow = predictEscrow(user);\n        escrow.pay(msg.sender, liquidatorReward);\n        if(liquidationFeeBps > 0) {\n            uint liquidationFee = repaidDebt * 1 ether / price * liquidationFeeBps / 10000;\n            uint balance = escrow.balance();\n            if(balance >= liquidationFee) {\n                escrow.pay(gov, liquidationFee);\n            } else if(balance > 0) {\n                escrow.pay(gov, balance);\n            }\n        }\n        emit Liquidate(user, msg.sender, repaidDebt, liquidatorReward);\n    }",
+          "sol_function_source_lines": [
+            671,
+            698
+          ],
+          "value": 1786388.3553120447,
+          "normalized_value": 1786388.3553120447,
+          "value_status": "valid",
+          "extra": {}
+        },
+        "keep": true,
+        "reason": "LLM triage skipped; deterministic filters passed",
+        "confidence": "high",
+        "fp_categories": [],
+        "vulnerability_relevance": "Candidate selected for formal verification without LLM triage."
+      },
+      "formal_spec": {
+        "target_contract": "Market",
+        "target_address": "0x48ba574edf0bc4e2e40b529863aaa6a67c264e7c",
+        "target_function": "liquidate",
+        "vulnerability_description": "Partial liquidation must not create bad debt: collateralFactorBps * (10000 + liquidationIncentiveBps + liquidationFeeBps) must be < 10000^2, gap_after must be < gap_before, and liquidation must not exhaust collateral while debt remains.",
+        "vulnerability_class": "bad_debt_creation_on_partial_liquidation",
+        "summary": "A partial liquidation can increase the gap between a user's debt and their credit limit (i.e., make their position more underwater), or even fully exhaust their collateral while debt remains, creating bad debt. This happens if the collateral removed (liquidator reward + fee) exceeds the proportional collateral value of the debt repaid, which occurs when collateralFactorBps * (10000 + liquidationIncentiveBps + liquidationFeeBps) >= 10000^2.",
+        "variables": [
+          {
+            "name": "debt_before",
+            "solidity_type": "uint256",
+            "symbolic_type": "uint",
+            "role": "state",
+            "description": "User's debt before liquidation"
+          },
+          {
+            "name": "debt_after",
+            "solidity_type": "uint256",
+            "symbolic_type": "uint",
+            "role": "state",
+            "description": "User's debt after liquidation (debt_before - repaidDebt)"
+          },
+          {
+            "name": "collateral_before",
+            "solidity_type": "uint256",
+            "symbolic_type": "uint",
+            "role": "state",
+            "description": "User's collateral balance in escrow before liquidation"
+          },
+          {
+            "name": "collateral_after",
+            "solidity_type": "uint256",
+            "symbolic_type": "uint",
+            "role": "state",
+            "description": "User's collateral balance in escrow after liquidation"
+          },
+          {
+            "name": "repaidDebt",
+            "solidity_type": "uint256",
+            "symbolic_type": "uint",
+            "role": "argument",
+            "description": "Amount of debt being repaid by liquidator"
+          },
+          {
+            "name": "collateralFactorBps",
+            "solidity_type": "uint256",
+            "symbolic_type": "uint",
+            "role": "argument",
+            "description": "Collateral factor in basis points (e.g. 8500)"
+          },
+          {
+            "name": "liquidationIncentiveBps",
+            "solidity_type": "uint256",
+            "symbolic_type": "uint",
+            "role": "argument",
+            "description": "Liquidation incentive in basis points (e.g. 1000)"
+          },
+          {
+            "name": "liquidationFeeBps",
+            "solidity_type": "uint256",
+            "symbolic_type": "uint",
+            "role": "argument",
+            "description": "Liquidation fee in basis points (e.g. 0)"
+          },
+          {
+            "name": "liquidationFactorBps",
+            "solidity_type": "uint256",
+            "symbolic_type": "uint",
+            "role": "argument",
+            "description": "Max portion of debt that can be repaid in basis points (e.g. 7500)"
+          },
+          {
+            "name": "price",
+            "solidity_type": "uint256",
+            "symbolic_type": "uint",
+            "role": "derived",
+            "description": "Price of collateral from oracle, adjusted by collateralFactorBps"
+          },
+          {
+            "name": "liquidatorReward",
+            "solidity_type": "uint256",
+            "symbolic_type": "uint",
+            "role": "derived",
+            "description": "Collateral paid to liquidator: repaidDebt * 1 ether / price * (10000 + liquidationIncentiveBps) / 10000"
+          },
+          {
+            "name": "liquidationFee",
+            "solidity_type": "uint256",
+            "symbolic_type": "uint",
+            "role": "derived",
+            "description": "Collateral paid to governance as fee: repaidDebt * 1 ether / price * liquidationFeeBps / 10000"
+          },
+          {
+            "name": "creditLimit_before",
+            "solidity_type": "uint256",
+            "symbolic_type": "uint",
+            "role": "derived",
+            "description": "User's credit limit before liquidation: collateral_before * price / 1 ether * collateralFactorBps / 10000"
+          },
+          {
+            "name": "creditLimit_after",
+            "solidity_type": "uint256",
+            "symbolic_type": "uint",
+            "role": "derived",
+            "description": "User's credit limit after liquidation: collateral_after * price / 1 ether * collateralFactorBps / 10000"
+          }
+        ],
+        "callee_summaries": [
+          {
+            "name": "oracle.getPrice",
+            "purpose": "Get the pessimistic price of collateral, adjusted by collateralFactorBps",
+            "formula": "price",
+            "assumptions": [
+              "price > 0",
+              "price is consistent before and during the liquidation call"
+            ]
+          },
+          {
+            "name": "escrow.pay",
+            "purpose": "Transfer collateral from user's escrow to recipient",
+            "formula": "collateral_after = collateral_before - liquidatorReward - actualFeePaid",
+            "assumptions": [
+              "escrow has sufficient balance to cover liquidatorReward",
+              "actualFeePaid = min(liquidationFee, collateral_before - liquidatorReward)"
+            ]
+          },
+          {
+            "name": "getCreditLimitInternal",
+            "purpose": "Calculate user's credit limit based on collateral and collateral factor",
+            "formula": "creditLimit = collateral * price / 1 ether * collateralFactorBps / 10000",
+            "assumptions": []
+          }
+        ],
+        "preconditions": [
+          "repaidDebt > 0",
+          "debt_before > 0",
+          "creditLimit_before < debt_before",
+          "repaidDebt <= debt_before * liquidationFactorBps / 10000",
+          "collateral_before >= liquidatorReward",
+          "price > 0",
+          "collateralFactorBps > 0",
+          "collateralFactorBps < 10000",
+          "liquidationIncentiveBps > 0",
+          "liquidationIncentiveBps + liquidationFeeBps < 10000",
+          "collateralFactorBps == 8500",
+          "liquidationFactorBps == 7500",
+          "liquidationFeeBps == 0",
+          "liquidationIncentiveBps == 1000"
+        ],
+        "state_transitions": [
+          "debt_after = debt_before - repaidDebt",
+          "liquidatorReward = repaidDebt * 1 ether / price * (10000 + liquidationIncentiveBps) / 10000",
+          "liquidationFee = repaidDebt * 1 ether / price * liquidationFeeBps / 10000",
+          "actualFeePaid = min(liquidationFee, collateral_before - liquidatorReward)",
+          "collateral_after = collateral_before - liquidatorReward - actualFeePaid",
+          "creditLimit_before = collateral_before * price / 1 ether * collateralFactorBps / 10000",
+          "creditLimit_after = collateral_after * price / 1 ether * collateralFactorBps / 10000"
+        ],
+        "safety_properties": [
+          "(debt_after - creditLimit_after) < (debt_before - creditLimit_before)",
+          "implies(debt_after > 0, collateral_after > 0)",
+          "collateralFactorBps * (10000 + liquidationIncentiveBps + liquidationFeeBps) < 10000 * 10000"
+        ],
+        "violation_conditions": [
+          "(debt_after - creditLimit_after) >= (debt_before - creditLimit_before)",
+          "and(debt_after > 0, collateral_after == 0)",
+          "collateralFactorBps * (10000 + liquidationIncentiveBps + liquidationFeeBps) >= 10000 * 10000"
+        ],
+        "z3_encoding_notes": [
+          "Use floor_div(a, b) for all Solidity integer divisions to accurately model truncation behavior.",
+          "The oracle price is already adjusted by collateralFactorBps in the contract, so price = raw_price * collateralFactorBps / 10000.",
+          "actualFeePaid must be modeled as min(liquidationFee, collateral_before - liquidatorReward) because the fee is capped by remaining escrow balance.",
+          "To prove the gap increases, substitute the state transitions and simplify: the gap change is (repaidDebt - (liquidatorReward + actualFeePaid) * price / 1 ether * collateralFactorBps / 10000). If actualFeePaid = liquidationFee, this simplifies to checking if collateralFactorBps * (10000 + liquidationIncentiveBps + liquidationFeeBps) >= 10000^2.",
+          "With on-chain params (collateralFactorBps=8500, liquidationIncentiveBps=1000, liquidationFeeBps=0): 8500 * 11000 = 93,500,000 which is < 100,000,000, so the current params are safe for the gap condition, but the spec should check the general param condition.",
+          "Be careful with the 1 ether (1e18) scaling factor when computing liquidatorReward and liquidationFee from debt and price."
+        ],
+        "unsupported_features": [
+          "External calls to oracle, dbr, borrowController, and dola are abstracted; their internal logic and potential reverts are not modeled.",
+          "Potential oracle price manipulation between the credit limit check and the reward calculation is not modeled (assumes consistent price).",
+          "DBR deficit mechanics and their effect on debt accrual during liquidation are not modeled."
+        ],
+        "missing_context": [
+          "Exact implementation of oracle.getPrice and whether it can return different values on consecutive calls within the same transaction.",
+          "Implementation of escrow.pay to confirm it reverts on insufficient balance vs silently transferring less.",
+          "Whether borrowController.onRepay can revert and under what conditions."
+        ],
+        "confidence": "high"
+      },
+      "verification": {
+        "status": "possible_bug",
+        "solver_status": "sat",
+        "counterexample": {
+          "debt_before": 2,
+          "debt_after": 1,
+          "collateral_before": 1,
+          "collateral_after": 1,
+          "repaidDebt": 1,
+          "collateralFactorBps": 8500,
+          "liquidationIncentiveBps": 1000,
+          "liquidationFeeBps": 0,
+          "liquidationFactorBps": 7500,
+          "price": 1,
+          "liquidatorReward": 0,
+          "liquidationFee": 0,
+          "creditLimit_before": 1,
+          "creditLimit_after": 0,
+          "actualFeePaid": 0
+        },
+        "explanation": "Z3 found a satisfying assignment for at least one violation condition.",
+        "warnings": [
+          "External calls to oracle, dbr, borrowController, and dola are abstracted; their internal logic and potential reverts are not modeled.",
+          "Potential oracle price manipulation between the credit limit check and the reward calculation is not modeled (assumes consistent price).",
+          "DBR deficit mechanics and their effect on debt accrual during liquidation are not modeled.",
+          "Exact implementation of oracle.getPrice and whether it can return different values on consecutive calls within the same transaction.",
+          "Implementation of escrow.pay to confirm it reverts on insufficient balance vs silently transferring less.",
+          "Whether borrowController.onRepay can revert and under what conditions.",
+          "Skipped unsupported state transition `liquidatorReward = repaidDebt * 1 ether / price * (10000 + liquidationIncentiveBps) / 10000`: Could not parse expression: repaidDebt * 1 ether / price * (10000 + liquidationIncentiveBps) / 10000",
+          "Skipped unsupported state transition `liquidationFee = repaidDebt * 1 ether / price * liquidationFeeBps / 10000`: Could not parse expression: repaidDebt * 1 ether / price * liquidationFeeBps / 10000",
+          "Skipped unsupported state transition `creditLimit_before = collateral_before * price / 1 ether * collateralFactorBps / 10000`: Could not parse expression: collateral_before * price / 1 ether * collateralFactorBps / 10000",
+          "Skipped unsupported state transition `creditLimit_after = collateral_after * price / 1 ether * collateralFactorBps / 10000`: Could not parse expression: collateral_after * price / 1 ether * collateralFactorBps / 10000"
+        ]
+      },
+      "onchain_parameters": {
+        "collateralFactorBps": 8500,
+        "liquidationFactorBps": 7500,
+        "liquidationFeeBps": 0,
+        "liquidationIncentiveBps": 1000
+      },
+      "limitations": [
+        "Z3 checks only the encoded formal model, not full Solidity or EVM semantics.",
+        "sat means possible_bug, never verified_bug.",
+        "Heuristic source slicing may miss relevant context until Slither integration is added."
+      ],
+      "recommended_manual_review_steps": [
+        "Review missing_context and unsupported_features before trusting solver output.",
+        "Compare each formula against Solidity source and protocol documentation.",
+        "Manually validate any counterexample against real units, rounding, and access control."
+      ]
+    },
+    {
+      "contract_address": "0x3fd3dabb9f9480621c8a111603d3ba70f17550bc",
+      "contract_name": "Market",
+      "function_source_lines": [
+        671,
+        698
+      ],
+      "value": 1337554.0350286516,
+      "vulnerability_description": "Partial liquidation must not create bad debt: collateralFactorBps * (10000 + liquidationIncentiveBps + liquidationFeeBps)\n  must be < 10000^2, gap_after must be < gap_before, and liquidation must not exhaust collateral while debt remains.",
+      "triage_result": {
+        "original": {
+          "contract": "0x3fd3dabb9f9480621c8a111603d3ba70f17550bc",
+          "contract_name": "Market",
+          "sol_function": "function liquidate(address user, uint repaidDebt) public {\n        require(repaidDebt > 0, \"Must repay positive debt\");\n        uint debt = debts[user];\n        require(getCreditLimitInternal(user) < debt, \"User debt is healthy\");\n        require(repaidDebt <= debt * liquidationFactorBps / 10000, \"Exceeded liquidation factor\");\n        uint price = oracle.getPrice(address(collateral), collateralFactorBps);\n        uint liquidatorReward = repaidDebt * 1 ether / price;\n        liquidatorReward += liquidatorReward * liquidationIncentiveBps / 10000;\n        debts[user] -= repaidDebt;\n        totalDebt -= repaidDebt;\n        dbr.onRepay(user, repaidDebt);\n        if(address(borrowController) != address(0)){\n            borrowController.onRepay(repaidDebt);\n        }\n        dola.transferFrom(msg.sender, address(this), repaidDebt);\n        IEscrow escrow = predictEscrow(user);\n        escrow.pay(msg.sender, liquidatorReward);\n        if(liquidationFeeBps > 0) {\n            uint liquidationFee = repaidDebt * 1 ether / price * liquidationFeeBps / 10000;\n            uint balance = escrow.balance();\n            if(balance >= liquidationFee) {\n                escrow.pay(gov, liquidationFee);\n            } else if(balance > 0) {\n                escrow.pay(gov, balance);\n            }\n        }\n        emit Liquidate(user, msg.sender, repaidDebt, liquidatorReward);\n    }",
+          "sol_function_source_lines": [
+            671,
+            698
+          ],
+          "value": 1337554.0350286516,
+          "normalized_value": 1337554.0350286516,
+          "value_status": "valid",
+          "extra": {}
+        },
+        "keep": true,
+        "reason": "LLM triage skipped; deterministic filters passed",
+        "confidence": "high",
+        "fp_categories": [],
+        "vulnerability_relevance": "Candidate selected for formal verification without LLM triage."
+      },
+      "formal_spec": {
+        "target_contract": "Market",
+        "target_address": "0x3fd3dabb9f9480621c8a111603d3ba70f17550bc",
+        "target_function": "liquidate",
+        "vulnerability_description": "Partial liquidation must not create bad debt: collateralFactorBps * (10000 + liquidationIncentiveBps + liquidationFeeBps) must be < 10000^2, gap_after must be < gap_before, and liquidation must not exhaust collateral while debt remains.",
+        "vulnerability_class": "bad_debt_liquidation",
+        "summary": "The liquidate function can create bad debt if the protocol parameters allow the collateral removed (liquidator reward + fee) to exceed the proportional collateral value of the repaid debt. Specifically, if collateralFactorBps * (10000 + liquidationIncentiveBps + liquidationFeeBps) >= 10000^2, a partial liquidation worsens the user's collateralization ratio, potentially exhausting collateral while debt remains.",
+        "variables": [
+          {
+            "name": "debt_before",
+            "solidity_type": "uint256",
+            "symbolic_type": "uint",
+            "role": "state",
+            "description": "User's debt before liquidation"
+          },
+          {
+            "name": "debt_after",
+            "solidity_type": "uint256",
+            "symbolic_type": "uint",
+            "role": "state",
+            "description": "User's debt after liquidation (debt_before - repaidDebt)"
+          },
+          {
+            "name": "collateral_before",
+            "solidity_type": "uint256",
+            "symbolic_type": "uint",
+            "role": "state",
+            "description": "User's escrow collateral balance before liquidation"
+          },
+          {
+            "name": "collateral_after",
+            "solidity_type": "uint256",
+            "symbolic_type": "uint",
+            "role": "state",
+            "description": "User's escrow collateral balance after liquidation"
+          },
+          {
+            "name": "repaidDebt",
+            "solidity_type": "uint256",
+            "symbolic_type": "uint",
+            "role": "argument",
+            "description": "Amount of debt being repaid by liquidator"
+          },
+          {
+            "name": "liquidatorReward",
+            "solidity_type": "uint256",
+            "symbolic_type": "uint",
+            "role": "derived",
+            "description": "Collateral paid to liquidator: repaidDebt * 1 ether / price * (10000 + liquidationIncentiveBps) / 10000"
+          },
+          {
+            "name": "liquidationFee",
+            "solidity_type": "uint256",
+            "symbolic_type": "uint",
+            "role": "derived",
+            "description": "Collateral paid to governance: repaidDebt * 1 ether / price * liquidationFeeBps / 10000"
+          },
+          {
+            "name": "collateralFactorBps",
+            "solidity_type": "uint256",
+            "symbolic_type": "uint",
+            "role": "constant",
+            "description": "Collateral factor in basis points (8500)"
+          },
+          {
+            "name": "liquidationIncentiveBps",
+            "solidity_type": "uint256",
+            "symbolic_type": "uint",
+            "role": "constant",
+            "description": "Liquidation incentive in basis points (1000)"
+          },
+          {
+            "name": "liquidationFeeBps",
+            "solidity_type": "uint256",
+            "symbolic_type": "uint",
+            "role": "constant",
+            "description": "Liquidation fee in basis points (0)"
+          },
+          {
+            "name": "liquidationFactorBps",
+            "solidity_type": "uint256",
+            "symbolic_type": "uint",
+            "role": "constant",
+            "description": "Max fraction of debt repayable in basis points (7500)"
+          },
+          {
+            "name": "price",
+            "solidity_type": "uint256",
+            "symbolic_type": "uint",
+            "role": "unknown",
+            "description": "Pessimistic price of collateral from oracle, scaled by collateralFactorBps"
+          }
+        ],
+        "callee_summaries": [
+          {
+            "name": "oracle.getPrice",
+            "purpose": "Get pessimistic collateral price",
+            "formula": null,
+            "assumptions": [
+              "price > 0",
+              "price is consistent before and during the call"
+            ]
+          },
+          {
+            "name": "escrow.pay",
+            "purpose": "Transfer collateral from user escrow to recipient",
+            "formula": null,
+            "assumptions": [
+              "escrow.balance() >= amount for successful pay",
+              "Reduces escrow balance by exact amount"
+            ]
+          },
+          {
+            "name": "getCreditLimitInternal",
+            "purpose": "Calculate user credit limit",
+            "formula": "collateral_before * price / 1 ether * collateralFactorBps / 10000",
+            "assumptions": []
+          }
+        ],
+        "preconditions": [
+          "repaidDebt > 0",
+          "debt_before > 0",
+          "getCreditLimitInternal(user) < debt_before",
+          "repaidDebt <= debt_before * liquidationFactorBps / 10000",
+          "collateral_before >= liquidatorReward + liquidationFee",
+          "collateralFactorBps == 8500",
+          "liquidationFactorBps == 7500",
+          "liquidationFeeBps == 0",
+          "liquidationIncentiveBps == 1000"
+        ],
+        "state_transitions": [
+          "debt_after = debt_before - repaidDebt",
+          "liquidatorReward = floor_div(repaidDebt * 1000000000000000000, price) * (10000 + liquidationIncentiveBps) / 10000",
+          "liquidationFee = floor_div(repaidDebt * 1000000000000000000, price) * liquidationFeeBps / 10000",
+          "collateral_after = collateral_before - liquidatorReward - min(liquidationFee, max(collateral_before - liquidatorReward, 0))"
+        ],
+        "safety_properties": [
+          "(collateral_after * price / 1000000000000000000 * collateralFactorBps / 10000) - debt_after >= (collateral_before * price / 1000000000000000000 * collateralFactorBps / 10000) - debt_before",
+          "collateralFactorBps * (10000 + liquidationIncentiveBps + liquidationFeeBps) < 100000000",
+          "implies(debt_after > 0, collateral_after > 0)"
+        ],
+        "violation_conditions": [
+          "(collateral_after * price / 1000000000000000000 * collateralFactorBps / 10000) - debt_after < (collateral_before * price / 1000000000000000000 * collateralFactorBps / 10000) - debt_before",
+          "collateralFactorBps * (10000 + liquidationIncentiveBps + liquidationFeeBps) >= 100000000",
+          "and(debt_after > 0, collateral_after == 0)"
+        ],
+        "z3_encoding_notes": [
+          "Use floor_div(a, b) for Solidity integer division a / b",
+          "price is scaled by collateralFactorBps per oracle.getPrice signature, so collateral_value = collateral * price / 1 ether",
+          "1 ether = 10^18 = 1000000000000000000",
+          "The param constraint collateralFactorBps * (10000 + liquidationIncentiveBps + liquidationFeeBps) < 10000^2 is a necessary condition for safety; with current params 8500 * 11000 = 93500000 < 100000000, so current params are safe",
+          "If liquidationFeeBps were higher (e.g., 800), 8500 * 11800 = 100300000 >= 100000000, violating the constraint",
+          "The escrow.pay for the fee has a fallback that pays remaining balance if insufficient, modeled with min/max"
+        ],
+        "unsupported_features": [
+          "External calls to oracle, dbr, borrowController, and dola are abstracted; reverts on failure are assumed",
+          "ERC20 transferFrom assumed to succeed and return true or revert"
+        ],
+        "missing_context": [
+          "Exact implementation of oracle.getPrice and its price bounds",
+          "Implementation of escrow.pay and whether it can fail partially",
+          "DBR deficit state and its effect on liquidation eligibility"
+        ],
+        "confidence": "high"
+      },
+      "verification": {
+        "status": "possible_bug",
+        "solver_status": "sat",
+        "counterexample": {
+          "debt_before": 3,
+          "debt_after": 2,
+          "collateral_before": 2000000000000000001,
+          "collateral_after": 1450000000000000001,
+          "repaidDebt": 1,
+          "liquidatorReward": 550000000000000000,
+          "liquidationFee": 0,
+          "collateralFactorBps": 8500,
+          "liquidationIncentiveBps": 1000,
+          "liquidationFeeBps": 0,
+          "liquidationFactorBps": 7500,
+          "price": 2
+        },
+        "explanation": "Z3 found a satisfying assignment for at least one violation condition.",
+        "warnings": [
+          "External calls to oracle, dbr, borrowController, and dola are abstracted; reverts on failure are assumed",
+          "ERC20 transferFrom assumed to succeed and return true or revert",
+          "Exact implementation of oracle.getPrice and its price bounds",
+          "Implementation of escrow.pay and whether it can fail partially",
+          "DBR deficit state and its effect on liquidation eligibility",
+          "Skipped unsupported precondition `getCreditLimitInternal(user) < debt_before`: Unknown symbol: user"
+        ]
+      },
+      "onchain_parameters": {
+        "collateralFactorBps": 8500,
+        "liquidationFactorBps": 7500,
+        "liquidationFeeBps": 0,
+        "liquidationIncentiveBps": 1000
+      },
+      "limitations": [
+        "Z3 checks only the encoded formal model, not full Solidity or EVM semantics.",
+        "sat means possible_bug, never verified_bug.",
+        "Heuristic source slicing may miss relevant context until Slither integration is added."
+      ],
+      "recommended_manual_review_steps": [
+        "Review missing_context and unsupported_features before trusting solver output.",
+        "Compare each formula against Solidity source and protocol documentation.",
+        "Manually validate any counterexample against real units, rounding, and access control."
+      ]
+    }
+  ]
+}
