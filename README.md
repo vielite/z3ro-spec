@@ -1,5 +1,7 @@
 # z3ro-spec
 
+## TO-DO: Add support for user inputed formal specification template to improve formal verification engine. `--template`
+
 `z3ro-spec` is a vulnerability-agnostic formal-spec assistant for smart-contract whitehat research.
 
 It accepts a Glider result JSON file containing candidate Solidity functions and a free-form vulnerability description. Glider provides the initial candidate set; `z3ro-spec` removes obvious false positives, uses a lightweight triage LLM for relevance, expands verified source context from Etherscan, asks a stronger formal-verifier LLM to engineer a structured specification, and checks the encoded model locally with Z3.
