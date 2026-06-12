@@ -1,6 +1,7 @@
 # z3ro-spec
 
-## TO-DO: Add support for user inputed formal specification template to improve formal verification engine. `--template`
+## TO-DO: Add support for the Certora prover formal specification template to improve formal verification engine. `--template`
+
 
 `z3ro-spec` is a vulnerability-agnostic formal-spec assistant for smart-contract whitehat research.
 
